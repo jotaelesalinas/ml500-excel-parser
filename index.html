@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML500 Excel Parser</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; color: #333; }
+        h1 { margin-bottom: 1.5rem; }
+        label { display: block; font-weight: 600; margin-bottom: 0.3rem; }
+        input[type="text"], input[type="password"] {
+            width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95rem;
+        }
+        .field { margin-bottom: 1rem; }
+        .field small { color: #666; }
+        button {
+            padding: 0.6rem 1.5rem; background: #1a73e8; color: #fff; border: none;
+            border-radius: 4px; font-size: 1rem; cursor: pointer;
+        }
+        button:hover { background: #1557b0; }
+        button:disabled { background: #999; cursor: not-allowed; }
+        #status { margin-top: 1rem; padding: 0.8rem; border-radius: 4px; display: none; }
+        #status.error { display: block; background: #fce8e6; color: #c5221f; }
+        #status.info { display: block; background: #e8f0fe; color: #1a73e8; }
+        #results { margin-top: 1.5rem; }
+        table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+        th, td { padding: 0.5rem 0.75rem; border: 1px solid #ddd; text-align: left; }
+        th { background: #f5f5f5; font-weight: 600; }
+        td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body>
+    <h1>ML500 Excel Parser</h1>
+
+    <div class="field">
+        <label for="spreadsheet-url">Google Sheets URL</label>
+        <input type="text" id="spreadsheet-url" placeholder="https://docs.google.com/spreadsheets/d/...">
+    </div>
+
+    <div class="field">
+        <label for="api-key">Google API Key</label>
+        <input type="password" id="api-key" placeholder="AIza...">
+        <small>Needs Google Sheets API enabled. Not stored anywhere.</small>
+    </div>
+
+    <div class="field">
+        <label for="first-n">First N values (comma-separated)</label>
+        <input type="text" id="first-n" value="4, 10">
+    </div>
+
+    <button id="btn-calculate">Calculate</button>
+
+    <div id="status"></div>
+    <div id="results"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
