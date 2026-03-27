@@ -6,9 +6,9 @@ const FIELDS = ["Ticker", "Nombre", "FechaC", "Cantidad", "PrecioC", "FechaV", "
 const FIELD_SLUGS = FIELDS.map(f => f.toLowerCase());
 
 const TAB_NAMES = [
-    "HEU500 (top 4)",
-    "SP500 PER (top 10)",
-    "Rusell1000 PER (top 10)",
+    "HEU500 6m b1 1m t20 r0",
+    "SP500 Heus + Fin Data Wk",
+    "Rusell1000 Heus + Fin Data Wk",
 ];
 
 const MIN_DEPOSIT = 1000;
