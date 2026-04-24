@@ -46,4 +46,98 @@ describe("PortfolioCalculator", () => {
         expect(result.current).toBe(0);
         expect(result.returns).toBe("N/A");
     });
+
+    it("includes sell movements in cash and passes the combined flows to xirr", () => {
+        const today = "2024-01-10";
+        const metrics = new FinancialMetrics(() => today);
+        spyOn(metrics, "xirr").and.returnValue(0.08);
+        spyOn(metrics, "avgWeightedAge").and.returnValue(0.5);
+
+        const calculator = new PortfolioCalculator(metrics, () => today);
+        const [result] = calculator.calculate([[
+            {
+                ticker: "AAA",
+                nombre: "Alpha",
+                fechac: "2024-01-01",
+                cantidad: "2",
+                precioc: "100",
+                fechav: "2024-01-05",
+                preciov: "130",
+                precioa: "",
+            },
+        ], [], []], [1]);
+
+        expect(result.deposited).toBe(1000);
+        expect(result.invested).toBe(0);
+        expect(result.cash).toBe(1060);
+        expect(result.current).toBe(1060);
+        expect(result.returns).toBe(6);
+        expect(metrics.xirr).toHaveBeenCalledWith([
+            { date: "2024-01-01", amount: -1000 },
+            { date: today, amount: 1060 },
+        ]);
+    });
+
+    it("returns N/A for xirr when the metric calculation fails", () => {
+        const today = "2024-01-10";
+        const metrics = new FinancialMetrics(() => today);
+        spyOn(metrics, "xirr").and.throwError("XIRR did not converge.");
+        spyOn(metrics, "avgWeightedAge").and.returnValue(1);
+        spyOn(console, "warn");
+
+        const calculator = new PortfolioCalculator(metrics, () => today);
+        const [result] = calculator.calculate([[
+            {
+                ticker: "AAA",
+                nombre: "Alpha",
+                fechac: "2024-01-01",
+                cantidad: "2",
+                precioc: "100",
+                fechav: "",
+                preciov: "",
+                precioa: "150",
+            },
+        ], [], []], [1]);
+
+        expect(result.xirr).toBe("N/A");
+        expect(console.warn).toHaveBeenCalled();
+    });
+
+    it("throws when an entry is missing required buy data", () => {
+        const today = "2024-01-10";
+        const metrics = new FinancialMetrics(() => today);
+        const calculator = new PortfolioCalculator(metrics, () => today);
+
+        expect(() => calculator.calculate([[
+            {
+                ticker: "AAA",
+                nombre: "Alpha",
+                fechac: "",
+                cantidad: "2",
+                precioc: "100",
+                fechav: "",
+                preciov: "",
+                precioa: "150",
+            },
+        ], [], []], [1])).toThrowError(/Missing fechac, cantidad, or precioc/);
+    });
+
+    it("throws when sold entries also include current price data", () => {
+        const today = "2024-01-10";
+        const metrics = new FinancialMetrics(() => today);
+        const calculator = new PortfolioCalculator(metrics, () => today);
+
+        expect(() => calculator.calculate([[
+            {
+                ticker: "AAA",
+                nombre: "Alpha",
+                fechac: "2024-01-01",
+                cantidad: "2",
+                precioc: "100",
+                fechav: "2024-01-05",
+                preciov: "120",
+                precioa: "130",
+            },
+        ], [], []], [1])).toThrowError(/Unexpected precioa with fechav and preciov/);
+    });
 });

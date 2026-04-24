@@ -40,8 +40,15 @@ try {
     window.clearInterval = window.clearInterval;
 
     await import("./specs/BulkFormInputParser.spec.js");
+    await import("./specs/SpreadsheetInputParser.spec.js");
+    await import("./specs/FinancialMetrics.spec.js");
     await import("./specs/PortfolioCalculator.spec.js");
+    await import("./specs/GoogleSheetsService.spec.js");
     await import("./specs/ResultsTableRenderer.spec.js");
+    await import("./specs/InputForm.spec.js");
+    await import("./specs/StatusView.spec.js");
+    await import("./specs/AppController.spec.js");
+    await import("./specs/Main.spec.js");
 
     htmlReporter.initialize();
     env.execute();
