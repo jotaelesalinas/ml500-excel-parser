@@ -68,7 +68,29 @@ describe("ResultsTableRenderer", () => {
             "49.75",
             "N/A",
             "2.2",
-            "7.5%",
+            "7.50 %",
         ]);
+    });
+
+    it("always renders percentages with two decimals", () => {
+        const renderer = new ResultsTableRenderer();
+        const container = document.createElement("div");
+
+        renderer.render([{
+            topN: 4,
+            tab: "Sample Tab",
+            deposited: 1000,
+            invested: 900,
+            current: 1042,
+            cash: 142,
+            returns: 4,
+            avgAgeY: 2.2,
+            xirr: 4.2,
+        }], container);
+
+        const cells = Array.from(container.querySelectorAll("tbody td")).map(cell => cell.textContent.trim());
+
+        expect(cells[6]).toBe("4.00 %");
+        expect(cells[8]).toBe("4.20 %");
     });
 });

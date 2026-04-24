@@ -41,6 +41,6 @@ export class ResultsTableRenderer {
     }
 
     #formatPercentage(value) {
-        return value === "N/A" ? "N/A" : `${value}%`;
+        return value === "N/A" ? "N/A" : `${Number(value).toFixed(2)} %`;
     }
 }
