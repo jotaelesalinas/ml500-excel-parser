@@ -7,8 +7,13 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jasmine-core@5.1.1/lib/jasmine-core/jasmine.css">
 </head>
 <body>
+    <script>
+        if (!window.location.pathname.endsWith("/") && !window.location.pathname.endsWith(".html")) {
+            window.location.replace(`${window.location.pathname}/${window.location.search}${window.location.hash}`);
+        }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/jasmine-core@5.1.1/lib/jasmine-core/jasmine.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jasmine-core@5.1.1/lib/jasmine-core/jasmine-html.js"></script>
-    <script type="module" src="/tests/run-tests.js"></script>
+    <script type="module" src="run-tests.js"></script>
 </body>
 </html>

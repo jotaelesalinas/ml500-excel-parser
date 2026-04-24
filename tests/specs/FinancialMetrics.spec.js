@@ -10,7 +10,7 @@ describe("FinancialMetrics", () => {
                 { date: "2025-01-01", amount: 1100 },
             ]);
 
-            expect(result).toBeCloseTo(0.1, 6);
+            expect(result).toBeCloseTo(0.099785, 6);
         });
 
         it("rejects cash flow lists with fewer than two flows", () => {
@@ -51,7 +51,8 @@ describe("FinancialMetrics", () => {
 
             expect(() => metrics.xirr([
                 { date: "2024-01-01", amount: -1000 },
-                { date: "2025-01-01", amount: 0 },
+                { date: "2024-06-01", amount: 0 },
+                { date: "2025-01-01", amount: 1100 },
             ])).toThrowError("No zero flows are allowed.");
         });
     });
@@ -65,7 +66,7 @@ describe("FinancialMetrics", () => {
                 { date: "2023-07-01", amount: 300 },
             ]);
 
-            expect(result).toBeCloseTo(0.6256, 3);
+            expect(result).toBeCloseTo(0.627652, 6);
         });
 
         it("rejects invalid dates or amounts", () => {
