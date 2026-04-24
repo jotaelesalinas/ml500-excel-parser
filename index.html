@@ -9,11 +9,23 @@
         body { font-family: system-ui, sans-serif; max-width: 1200px; margin: 2rem auto; padding: 0 1rem; color: #333; }
         h1 { margin-bottom: 1.5rem; }
         label { display: block; font-weight: 600; margin-bottom: 0.3rem; }
-        input[type="text"], input[type="password"] {
+        input[type="text"], input[type="password"], textarea {
             width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95rem;
         }
+        textarea { min-height: 168px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
         .field { margin-bottom: 1rem; }
         .field small { color: #666; }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1.5rem;
+            align-items: start;
+        }
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
         button {
             padding: 0.6rem 1.5rem; background: #1a73e8; color: #fff; border: none;
             border-radius: 4px; font-size: 1rem; cursor: pointer;
@@ -28,25 +40,38 @@
         th, td { padding: 0.5rem 0.75rem; border: 1px solid #ddd; text-align: left; }
         th { background: #f5f5f5; font-weight: 600; }
         td.num { text-align: right; font-variant-numeric: tabular-nums; }
+        @media (max-width: 800px) {
+            .form-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
     <h1>ML500 Excel Parser</h1>
 
-    <div class="field">
-        <label for="spreadsheet-url">Google Sheets URL</label>
-        <input type="text" id="spreadsheet-url" placeholder="https://docs.google.com/spreadsheets/d/...">
-    </div>
+    <div class="form-grid">
+        <div>
+            <div class="field">
+                <label for="spreadsheet-url">Google Sheets URL</label>
+                <input type="text" id="spreadsheet-url" placeholder="https://docs.google.com/spreadsheets/d/...">
+            </div>
 
-    <div class="field">
-        <label for="api-key">Google API Key</label>
-        <input type="password" id="api-key" placeholder="AIza...">
-        <small>Needs Google Sheets API enabled. Not stored anywhere.</small>
-    </div>
+            <div class="field">
+                <label for="api-key">Google API Key</label>
+                <input type="password" id="api-key" placeholder="AIza...">
+                <small>Needs Google Sheets API enabled. Not stored anywhere.</small>
+            </div>
 
-    <div class="field">
-        <label for="first-n">First N values (comma-separated)</label>
-        <input type="text" id="first-n" value="4, 10">
+            <div class="field">
+                <label for="first-n">First N values (comma-separated)</label>
+                <input type="text" id="first-n" value="4, 10">
+            </div>
+        </div>
+
+        <div class="field field-group">
+            <label for="bulk-input">Bulk input</label>
+            <textarea id="bulk-input" placeholder="Line 1: Google Sheets URL&#10;Line 2: Google API Key&#10;Line 3: First N values"></textarea>
+            <small>If this textarea has content, its first three non-empty trimmed lines will populate the fields on the left before calculating.</small>
+        </div>
     </div>
 
     <button id="btn-calculate">Calculate</button>
@@ -54,6 +79,6 @@
     <div id="status"></div>
     <div id="results"></div>
 
-    <script src="app.js"></script>
+    <script type="module" src="./app.js"></script>
 </body>
 </html>
