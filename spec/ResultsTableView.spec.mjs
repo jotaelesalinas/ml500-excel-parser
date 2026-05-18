@@ -34,4 +34,26 @@ describe("ResultsTableView", () => {
     expect(container.innerHTML).toContain("Returns");
     expect(container.innerHTML).toContain("12.34 %");
   });
+
+  it("escapes HTML special characters in tab names", () => {
+    const container = { innerHTML: "" };
+    const view = new ResultsTableView(container);
+
+    view.render([
+      {
+        top_n: 1,
+        tab: '<script>alert("xss")</script>',
+        XIRR: "N/A",
+        avg_age_y: 0,
+        deposited: 0,
+        current: 0,
+        invested: 0,
+        cash: 0,
+        returns: 0,
+      },
+    ]);
+
+    expect(container.innerHTML).not.toContain("<script>");
+    expect(container.innerHTML).toContain("&lt;script&gt;");
+  });
 });

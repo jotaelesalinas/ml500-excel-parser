@@ -6,11 +6,13 @@ export class ProcessableTabsService {
     this.logger = logger;
   }
 
-  async fetchAll(spreadsheetId, apiKey) {
+  async fetchAll(spreadsheetId, apiKey, onProgress = () => {}) {
+    onProgress("Fetching sheet list...");
     const availableTabs = await this.sheetsApiClient.fetchSheetTabs(spreadsheetId, apiKey);
     const tabs = [];
 
-    for (const tabName of availableTabs) {
+    for (const [i, tabName] of availableTabs.entries()) {
+      onProgress(`Fetching tab "${tabName}" (${i + 1}/${availableTabs.length})...`);
       const rows = await this.sheetsApiClient.fetchSheetValues(spreadsheetId, tabName, apiKey);
 
       if (!this.headerValidator.hasProcessableHeaders(rows)) {

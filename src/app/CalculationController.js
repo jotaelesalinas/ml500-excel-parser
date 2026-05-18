@@ -68,8 +68,12 @@ export class CalculationController {
     this.statusView.show("Fetching data from Google Sheets...", "info");
 
     try {
-      const tabs = await this.processableTabsService.fetchAll(spreadsheetId, apiKey);
-      this.statusView.show("Calculating...", "info");
+      const tabs = await this.processableTabsService.fetchAll(
+        spreadsheetId,
+        apiKey,
+        (msg) => this.statusView.show(msg, "info"),
+      );
+      this.statusView.show(`Calculating results for ${tabs.length} tab(s)...`, "info");
       const results = this.portfolioResultsCalculator.calculate(tabs, firstNValues);
       this.statusView.clear();
       this.resultsTableView.render(results);

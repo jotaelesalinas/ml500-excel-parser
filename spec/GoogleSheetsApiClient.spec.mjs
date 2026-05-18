@@ -42,7 +42,7 @@ describe("GoogleSheetsApiClient", () => {
     expect(tabs).toEqual(["A", "B"]);
   });
 
-  it("throws with API body when tabs request fails", async () => {
+  it("throws a friendly error for 403 on tabs request", async () => {
     const fetchFn = jasmine.createSpy("fetchFn").and.resolveTo({
       ok: false,
       status: 403,
@@ -52,7 +52,35 @@ describe("GoogleSheetsApiClient", () => {
     const client = new GoogleSheetsApiClient(fetchFn);
 
     await expectAsync(client.fetchSheetTabs("sheet-id", "api-key")).toBeRejectedWithError(
-      "Failed to fetch spreadsheet metadata (403): forbidden",
+      /Access denied/,
+    );
+  });
+
+  it("uses Google API error message when available", async () => {
+    const fetchFn = jasmine.createSpy("fetchFn").and.resolveTo({
+      ok: false,
+      status: 400,
+      text: async () => JSON.stringify({ error: { message: "API key not valid." } }),
+    });
+
+    const client = new GoogleSheetsApiClient(fetchFn);
+
+    await expectAsync(client.fetchSheetTabs("sheet-id", "api-key")).toBeRejectedWithError(
+      /API key not valid/,
+    );
+  });
+
+  it("throws a friendly error for 404 on sheet values", async () => {
+    const fetchFn = jasmine.createSpy("fetchFn").and.resolveTo({
+      ok: false,
+      status: 404,
+      text: async () => "not found",
+    });
+
+    const client = new GoogleSheetsApiClient(fetchFn);
+
+    await expectAsync(client.fetchSheetValues("sheet-id", "Tab 1", "api-key")).toBeRejectedWithError(
+      /Not found/,
     );
   });
 

@@ -71,7 +71,7 @@ describe("CalculationController", () => {
 
     await controller.handleCalculate();
 
-    expect(deps.processableTabsService.fetchAll).toHaveBeenCalledWith("sheet-id", "api-key");
+    expect(deps.processableTabsService.fetchAll).toHaveBeenCalledWith("sheet-id", "api-key", jasmine.any(Function));
     expect(deps.portfolioResultsCalculator.calculate).toHaveBeenCalledWith(
       [{ name: "Tab", entries: [] }],
       [4, 10],
@@ -102,7 +102,7 @@ describe("CalculationController", () => {
     expect(deps.spreadsheetIdExtractor.extract).toHaveBeenCalledWith(
       "https://docs.google.com/spreadsheets/d/from-bulk/edit",
     );
-    expect(deps.processableTabsService.fetchAll).toHaveBeenCalledWith("sheet-id", "api-key-from-bulk");
+    expect(deps.processableTabsService.fetchAll).toHaveBeenCalledWith("sheet-id", "api-key-from-bulk", jasmine.any(Function));
     expect(deps.portfolioResultsCalculator.calculate).toHaveBeenCalledWith(
       [{ name: "Tab", entries: [] }],
       [3, 8],

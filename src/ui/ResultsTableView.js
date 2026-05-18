@@ -18,7 +18,7 @@ export class ResultsTableView {
     for (const result of results) {
       html += `<tr>
             <td class="num">${result.top_n}</td>
-            <td>${result.tab}</td>
+            <td>${this.#escapeHtml(result.tab)}</td>
             <td class="num">${result.deposited.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
             <td class="num">${result.current.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
             <td class="num">${result.invested.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
@@ -31,5 +31,13 @@ export class ResultsTableView {
 
     html += "</tbody></table>";
     this.containerElement.innerHTML = html;
+  }
+
+  #escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   }
 }
