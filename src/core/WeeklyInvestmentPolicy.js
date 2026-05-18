@@ -38,20 +38,35 @@ export class WeeklyInvestmentPolicy {
         saleReinvestment = Math.floor(saleCash / minInvestment) * minInvestment;
       }
     }
+    const usesSalesForBase = !reinvest && saleCash >= baseToBuy;
+    const baseFromSales = usesSalesForBase ? baseToBuy : 0;
+    const baseFromDeposits = baseToBuy - baseFromSales;
     const targetToBuy = baseToBuy + saleReinvestment;
 
     let depositTopUp = 0;
-    while (depositCash + depositTopUp < baseToBuy) {
+    while (depositCash + depositTopUp < baseFromDeposits) {
       depositTopUp += minDeposit;
     }
 
     const investedByPosition = Math.floor(targetToBuy / buyCount);
     const investedToday = investedByPosition * buyCount;
-    const investedFromDeposits = Math.min(investedToday, baseToBuy);
-    const investedFromSales = Math.min(
-      Math.max(investedToday - investedFromDeposits, 0),
-      saleReinvestment,
-    );
+    let investedFromDeposits;
+    let investedFromSales;
+    if (reinvest) {
+      investedFromDeposits = Math.min(investedToday, baseFromDeposits);
+      investedFromSales = Math.min(
+        Math.max(investedToday - investedFromDeposits, 0),
+        saleReinvestment,
+      );
+    } else {
+      if (usesSalesForBase) {
+        investedFromSales = Math.min(investedToday, baseFromSales);
+        investedFromDeposits = 0;
+      } else {
+        investedFromSales = 0;
+        investedFromDeposits = Math.min(investedToday, baseFromDeposits);
+      }
+    }
     const nextLastSaleReinvestment = incremental ? investedFromSales : 0;
 
     return {

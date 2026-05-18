@@ -28,7 +28,7 @@ describe("WeeklyInvestmentPolicy", () => {
     });
   });
 
-  it("invests only the weekly minimum from deposits when reinvest is disabled", () => {
+  it("uses sale cash first for the weekly minimum when reinvest is disabled", () => {
     const policy = new WeeklyInvestmentPolicy();
 
     const result = policy.decide({
@@ -40,16 +40,37 @@ describe("WeeklyInvestmentPolicy", () => {
       reinvest: false,
     });
 
-    expect(result.depositTopUp).toBe(1000);
+    expect(result.depositTopUp).toBe(0);
     expect(result.baseToBuy).toBe(200);
     expect(result.saleReinvestment).toBe(0);
     expect(result.targetToBuy).toBe(200);
     expect(result.investedByPosition).toBe(100);
     expect(result.investedToday).toBe(200);
-    expect(result.investedFromDeposits).toBe(200);
+    expect(result.investedFromDeposits).toBe(0);
+    expect(result.investedFromSales).toBe(200);
+    expect(result.nextDepositCash).toBe(0);
+    expect(result.nextSaleCash).toBe(1100);
+    expect(result.nextLastSaleReinvestment).toBe(0);
+  });
+
+  it("uses only deposits and top-up when sale cash is below weekly minimum", () => {
+    const policy = new WeeklyInvestmentPolicy();
+
+    const result = policy.decide({
+      buyCount: 1,
+      depositCash: 0,
+      saleCash: 150,
+      minDeposit: 1000,
+      minInvestment: 200,
+      reinvest: false,
+    });
+
+    expect(result.depositTopUp).toBe(1000);
+    expect(result.investedToday).toBe(200);
     expect(result.investedFromSales).toBe(0);
+    expect(result.investedFromDeposits).toBe(200);
     expect(result.nextDepositCash).toBe(800);
-    expect(result.nextSaleCash).toBe(1300);
+    expect(result.nextSaleCash).toBe(150);
     expect(result.nextLastSaleReinvestment).toBe(0);
   });
 
