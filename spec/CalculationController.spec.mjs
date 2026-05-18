@@ -34,12 +34,18 @@ describe("CalculationController", () => {
       spreadsheetUrlElement: { value: "https://docs.google.com/spreadsheets/d/abc/edit" },
       apiKeyElement: { value: "api-key" },
       firstNElement: { value: "4, 10" },
+      minDepositElement: { value: "1000" },
+      minInvestmentElement: { value: "200" },
+      reinvestElement: { checked: false },
       bulkInputElement: { value: "" },
       bulkFormInputParser: {
         parse: jasmine.createSpy("parse").and.returnValue({
           spreadsheetUrl: "",
           apiKey: "",
           firstN: "",
+          minDeposit: "",
+          minInvestment: "",
+          reinvest: null,
         }),
       },
       logger: { error: jasmine.createSpy("error") },
@@ -99,6 +105,7 @@ describe("CalculationController", () => {
     expect(deps.portfolioResultsCalculator.calculate).toHaveBeenCalledWith(
       [{ name: "Tab", entries: [] }],
       [4, 10],
+      { minDeposit: 1000, minInvestment: 200, reinvest: false },
     );
     expect(deps.statusView.clear).toHaveBeenCalled();
     expect(deps.resultsTableView.render).toHaveBeenCalledWith([{ tab: "Tab" }]);
@@ -126,6 +133,9 @@ describe("CalculationController", () => {
           spreadsheetUrl: "https://docs.google.com/spreadsheets/d/from-bulk/edit",
           apiKey: "api-key-from-bulk",
           firstN: "3, 8",
+          minDeposit: "1500",
+          minInvestment: "250",
+          reinvest: true,
         }),
       },
     });
@@ -144,6 +154,7 @@ describe("CalculationController", () => {
     expect(deps.portfolioResultsCalculator.calculate).toHaveBeenCalledWith(
       [{ name: "Tab", entries: [] }],
       [3, 8],
+      { minDeposit: 1500, minInvestment: 250, reinvest: true },
     );
   });
 

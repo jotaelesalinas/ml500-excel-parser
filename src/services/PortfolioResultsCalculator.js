@@ -1,4 +1,4 @@
-import { MIN_DEPOSIT, defaultTodayProvider } from "../config/constants.js";
+import { MIN_DEPOSIT, MIN_INVESTMENT, defaultTodayProvider } from "../config/constants.js";
 
 export class PortfolioResultsCalculator {
   constructor({
@@ -8,6 +8,7 @@ export class PortfolioResultsCalculator {
     weightedAgeCalculator,
     logger = console,
     minDeposit = MIN_DEPOSIT,
+    minInvestment = MIN_INVESTMENT,
     todayProvider = defaultTodayProvider,
   }) {
     this.firstNFilter = firstNFilter;
@@ -16,10 +17,14 @@ export class PortfolioResultsCalculator {
     this.weightedAgeCalculator = weightedAgeCalculator;
     this.logger = logger;
     this.minDeposit = minDeposit;
+    this.minInvestment = minInvestment;
     this.todayProvider = todayProvider;
   }
 
-  calculate(tabs, firstNValues) {
+  calculate(tabs, firstNValues, strategy = {}) {
+    const configuredMinDeposit = this.#toPositiveAmount(strategy.minDeposit, this.minDeposit);
+    const configuredMinInvestment = this.#toPositiveAmount(strategy.minInvestment, this.minInvestment);
+    const reinvest = Boolean(strategy.reinvest);
     const results = [];
 
     for (const firstN of firstNValues) {
@@ -31,32 +36,53 @@ export class PortfolioResultsCalculator {
 
         const moneyIn = [];
         const moneyOut = [];
+        const buyScaleByPositionId = new Map();
         let cash = 0;
         let valueToday = 0;
 
         for (const date of dates) {
-          const toBuy = movements
-            .filter((movement) => movement.date === date && movement.action === "buy")
-            .reduce((sum, movement) => sum + movement.amount, 0);
+          const buyMovements = movements.filter(
+            (movement) => movement.date === date && movement.action === "buy",
+          );
+
+          const targetToBuy = this.#dailyInvestmentTarget({
+            cash,
+            buyCount: buyMovements.length,
+            minInvestment: configuredMinInvestment,
+            reinvest,
+          });
 
           let deposited = 0;
-          while (cash < toBuy) {
-            cash += this.minDeposit;
-            deposited += this.minDeposit;
+          while (cash < targetToBuy) {
+            cash += configuredMinDeposit;
+            deposited += configuredMinDeposit;
           }
           if (deposited > 0) {
             moneyIn.push({ date, amount: deposited });
           }
-          cash -= toBuy;
+
+          const investedByPosition = buyMovements.length > 0
+            ? Math.floor(targetToBuy / buyMovements.length)
+            : 0;
+          const investedToday = investedByPosition * buyMovements.length;
+
+          buyMovements.forEach((movement) => {
+            if (movement.amount <= 0 || movement.positionId == null) {
+              return;
+            }
+            buyScaleByPositionId.set(movement.positionId, investedByPosition / movement.amount);
+          });
+
+          cash -= investedToday;
 
           const toSell = movements
             .filter((movement) => movement.date === date && movement.action === "sell")
-            .reduce((sum, movement) => sum + movement.amount, 0);
+            .reduce((sum, movement) => sum + this.#scaledAmount(movement, buyScaleByPositionId), 0);
           cash += toSell;
 
           const currentValue = movements
             .filter((movement) => movement.date === date && movement.action === "valueToday")
-            .reduce((sum, movement) => sum + movement.amount, 0);
+            .reduce((sum, movement) => sum + this.#scaledAmount(movement, buyScaleByPositionId), 0);
 
           if (currentValue > 0) {
             valueToday += currentValue;
@@ -111,5 +137,37 @@ export class PortfolioResultsCalculator {
     }
 
     return results;
+  }
+
+  #dailyInvestmentTarget({ cash, buyCount, minInvestment, reinvest }) {
+    if (buyCount === 0) {
+      return 0;
+    }
+
+    if (!reinvest) {
+      return minInvestment;
+    }
+
+    if (cash >= minInvestment) {
+      return Math.floor(cash / minInvestment) * minInvestment;
+    }
+
+    return minInvestment;
+  }
+
+  #scaledAmount(movement, buyScaleByPositionId) {
+    const scale = movement.positionId != null ? buyScaleByPositionId.get(movement.positionId) : null;
+    if (scale == null) {
+      return 0;
+    }
+    return +(movement.amount * scale).toFixed(2);
+  }
+
+  #toPositiveAmount(rawValue, fallback) {
+    const parsed = Number(rawValue);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return fallback;
+    }
+    return Math.floor(parsed);
   }
 }

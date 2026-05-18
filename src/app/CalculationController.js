@@ -10,6 +10,9 @@ export class CalculationController {
     spreadsheetUrlElement,
     apiKeyElement,
     firstNElement,
+    minDepositElement,
+    minInvestmentElement,
+    reinvestElement,
     bulkInputElement,
     bulkFormInputParser,
     logger = console,
@@ -24,6 +27,9 @@ export class CalculationController {
     this.spreadsheetUrlElement = spreadsheetUrlElement;
     this.apiKeyElement = apiKeyElement;
     this.firstNElement = firstNElement;
+    this.minDepositElement = minDepositElement;
+    this.minInvestmentElement = minInvestmentElement;
+    this.reinvestElement = reinvestElement;
     this.bulkInputElement = bulkInputElement;
     this.bulkFormInputParser = bulkFormInputParser;
     this.logger = logger;
@@ -62,6 +68,11 @@ export class CalculationController {
       return;
     }
 
+    const strategy = this.parseStrategyInputs();
+    if (!strategy) {
+      return;
+    }
+
     const tabs = await this.ensureDataLoaded();
     if (!tabs) {
       return;
@@ -69,7 +80,7 @@ export class CalculationController {
 
     try {
       this.statusView.show(`Calculating results for ${tabs.length} tab(s)...`, "info");
-      const results = this.portfolioResultsCalculator.calculate(tabs, firstNValues);
+      const results = this.portfolioResultsCalculator.calculate(tabs, firstNValues, strategy);
       this.statusView.clear();
       this.resultsTableView.render(results);
     } catch (error) {
@@ -201,10 +212,52 @@ export class CalculationController {
     if (parsed.firstN) {
       this.firstNElement.value = parsed.firstN;
     }
+    if (parsed.minDeposit && this.minDepositElement) {
+      this.minDepositElement.value = parsed.minDeposit;
+    }
+    if (parsed.minInvestment && this.minInvestmentElement) {
+      this.minInvestmentElement.value = parsed.minInvestment;
+    }
+    if (parsed.reinvest != null && this.reinvestElement) {
+      this.reinvestElement.checked = parsed.reinvest;
+    }
   }
 
   resetLoadButtonLabel() {
     this.loadButtonElement.textContent = this.loadButtonLabelDefault;
+  }
+
+  parseStrategyInputs() {
+    const minDeposit = this.#parsePositiveNumber(
+      this.minDepositElement?.value,
+      "Please enter a valid minimum deposit amount greater than 0.",
+    );
+    if (minDeposit == null) {
+      return null;
+    }
+
+    const minInvestment = this.#parsePositiveNumber(
+      this.minInvestmentElement?.value,
+      "Please enter a valid minimum investment amount greater than 0.",
+    );
+    if (minInvestment == null) {
+      return null;
+    }
+
+    return {
+      minDeposit,
+      minInvestment,
+      reinvest: Boolean(this.reinvestElement?.checked),
+    };
+  }
+
+  #parsePositiveNumber(rawValue, validationMessage) {
+    const value = Number(rawValue);
+    if (!Number.isFinite(value) || value <= 0) {
+      this.statusView.show(validationMessage, "error");
+      return null;
+    }
+    return value;
   }
 }
 

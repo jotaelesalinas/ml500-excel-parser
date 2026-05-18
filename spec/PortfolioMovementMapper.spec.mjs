@@ -15,10 +15,19 @@ describe("PortfolioMovementMapper", () => {
       precioa: "",
     });
 
-    expect(result).toEqual([
-      { action: "buy", date: "2026-01-01", ticker: "AAPL", amount: 200 },
-      { action: "sell", date: "2026-01-05", ticker: "AAPL", amount: 240 },
-    ]);
+    expect(result[0]).toEqual(jasmine.objectContaining({
+      action: "buy",
+      date: "2026-01-01",
+      ticker: "AAPL",
+      amount: 200,
+    }));
+    expect(result[1]).toEqual(jasmine.objectContaining({
+      action: "sell",
+      date: "2026-01-05",
+      ticker: "AAPL",
+      amount: 240,
+    }));
+    expect(result[0].positionId).toBe(result[1].positionId);
   });
 
   it("maps buy and current value movements", () => {
@@ -38,6 +47,35 @@ describe("PortfolioMovementMapper", () => {
     expect(result[1].action).toBe("valueToday");
     expect(result[1].date).toBe("2026-01-10");
     expect(result[1].amount).toBe(260);
+    expect(result[0].positionId).toBe(result[1].positionId);
+  });
+
+  it("assigns different position ids to different rows", () => {
+    const mapper = new PortfolioMovementMapper(() => "2026-01-10");
+
+    const first = mapper.map({
+      ticker: "AAPL",
+      nombre: "Apple",
+      fechac: "2026-01-01",
+      cantidad: "1",
+      precioc: "100",
+      fechav: "",
+      preciov: "",
+      precioa: "110",
+    });
+
+    const second = mapper.map({
+      ticker: "MSFT",
+      nombre: "Microsoft",
+      fechac: "2026-01-01",
+      cantidad: "1",
+      precioc: "200",
+      fechav: "",
+      preciov: "",
+      precioa: "220",
+    });
+
+    expect(first[0].positionId).not.toBe(second[0].positionId);
   });
 
   it("throws when both fechav/preciov and precioa are set", () => {

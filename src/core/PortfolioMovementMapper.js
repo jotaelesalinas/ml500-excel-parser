@@ -3,6 +3,7 @@ import { defaultTodayProvider } from "../config/constants.js";
 export class PortfolioMovementMapper {
   constructor(todayProvider = defaultTodayProvider) {
     this.todayProvider = todayProvider;
+    this.positionCounter = 0;
   }
 
   map(entry) {
@@ -17,12 +18,14 @@ export class PortfolioMovementMapper {
     const quantity = Number(entry.cantidad);
     const buyPrice = Number(entry.precioc.replace(/,/g, ""));
     const buyAmount = +(quantity * buyPrice).toFixed(2);
+    const positionId = this.#nextPositionId();
 
     const buy = {
       action: "buy",
       date: entry.fechac,
       ticker: entry.ticker,
       amount: buyAmount,
+      positionId,
     };
 
     if (entry.fechav !== "" && entry.preciov !== "") {
@@ -40,6 +43,7 @@ export class PortfolioMovementMapper {
           date: entry.fechav,
           ticker: entry.ticker,
           amount: sellAmount,
+          positionId,
         },
       ];
     }
@@ -59,10 +63,16 @@ export class PortfolioMovementMapper {
           date: this.todayProvider(),
           ticker: entry.ticker,
           amount: currentAmount,
+          positionId,
         },
       ];
     }
 
     throw new Error(`Unexpected entry (no sell or current price): ${JSON.stringify(entry)}`);
+  }
+
+  #nextPositionId() {
+    this.positionCounter += 1;
+    return this.positionCounter;
   }
 }

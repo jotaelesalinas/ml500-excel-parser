@@ -10,6 +10,9 @@ describe("BulkFormInputParser", () => {
       spreadsheetUrl: "https://docs.google.com/spreadsheets/d/abc/edit",
       apiKey: "key-1",
       firstN: "4, 10",
+      minDeposit: "",
+      minInvestment: "",
+      reinvest: null,
     });
   });
 
@@ -22,6 +25,24 @@ describe("BulkFormInputParser", () => {
       spreadsheetUrl: "only-url",
       apiKey: "",
       firstN: "",
+      minDeposit: "",
+      minInvestment: "",
+      reinvest: null,
+    });
+  });
+
+  it("parses optional strategy lines", () => {
+    const parser = new BulkFormInputParser();
+
+    const parsed = parser.parse("url\nkey\n5\n1000\n200\ntrue");
+
+    expect(parsed).toEqual({
+      spreadsheetUrl: "url",
+      apiKey: "key",
+      firstN: "5",
+      minDeposit: "1000",
+      minInvestment: "200",
+      reinvest: true,
     });
   });
 });

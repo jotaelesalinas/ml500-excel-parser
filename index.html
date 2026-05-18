@@ -69,7 +69,7 @@
             background: #d3d3d3;
             border-radius: 999px;
             transition: background 0.2s ease;
-            cursor: not-allowed;
+            cursor: pointer;
         }
         .toggle-slider::before {
             content: "";
@@ -80,7 +80,10 @@
             top: 3px;
             background: #fff;
             border-radius: 50%;
+            transition: transform 0.2s ease;
         }
+        .toggle-switch input:checked + .toggle-slider { background: #1a73e8; }
+        .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
         #status { margin-top: 1rem; padding: 0.8rem; border-radius: 4px; display: none; }
         #status.error { display: block; background: #fce8e6; color: #c5221f; }
         #status.info { display: block; background: #e8f0fe; color: #1a73e8; }
@@ -115,8 +118,8 @@
 
                 <div class="field field-group">
                     <label for="bulk-input">Bulk input</label>
-                    <textarea id="bulk-input" placeholder="Line 1: Google Sheets URL&#10;Line 2: Google API Key&#10;Line 3: First N values"></textarea>
-                    <small>If this textarea has content, its first three non-empty trimmed lines will populate the fields before loading.</small>
+                    <textarea id="bulk-input" placeholder="Line 1: Google Sheets URL&#10;Line 2: Google API Key&#10;Line 3: First N values&#10;Line 4: Minimum deposit&#10;Line 5: Minimum investment&#10;Line 6: Reinvest (true/false)"></textarea>
+                    <small>If this textarea has content, its first non-empty trimmed lines populate the form before loading.</small>
                 </div>
             </div>
 
@@ -134,16 +137,21 @@
                     </div>
 
                     <div class="field">
-                        <label for="min-investment">Inversión mínima</label>
-                        <input type="number" id="min-investment" placeholder="0" disabled>
+                        <label for="min-deposit">Minimum deposit</label>
+                        <input type="number" id="min-deposit" value="1000" min="1" step="1">
+                    </div>
+
+                    <div class="field">
+                        <label for="min-investment">Minimum investment</label>
+                        <input type="number" id="min-investment" value="200" min="1" step="1">
                     </div>
                 </div>
 
                 <div>
                     <div class="field toggle-field">
-                        <label for="reinvest">Reinvertir</label>
+                        <label for="reinvest">Reinvest</label>
                         <label class="toggle-switch" for="reinvest">
-                            <input type="checkbox" id="reinvest" disabled>
+                            <input type="checkbox" id="reinvest">
                             <span class="toggle-slider"></span>
                         </label>
                     </div>

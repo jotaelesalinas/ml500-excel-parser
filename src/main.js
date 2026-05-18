@@ -43,6 +43,9 @@ export function bootstrap(documentRef = document) {
     spreadsheetUrlElement: documentRef.getElementById("spreadsheet-url"),
     apiKeyElement: documentRef.getElementById("api-key"),
     firstNElement: documentRef.getElementById("first-n"),
+    minDepositElement: documentRef.getElementById("min-deposit"),
+    minInvestmentElement: documentRef.getElementById("min-investment"),
+    reinvestElement: documentRef.getElementById("reinvest"),
     bulkInputElement: documentRef.getElementById("bulk-input"),
     bulkFormInputParser: new BulkFormInputParser(),
   });
