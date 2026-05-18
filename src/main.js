@@ -1,32 +1,48 @@
-import { AppConfig } from "./config.js";
-import { AppController } from "./AppController.js";
-import { PortfolioCalculator } from "./calculators/PortfolioCalculator.js";
-import { FinancialMetrics } from "./calculators/FinancialMetrics.js";
-import { SpreadsheetIdExtractor, SheetRowParser, BulkFormInputParser } from "./parsers/SpreadsheetInputParser.js";
-import { ResultsTableRenderer } from "./renderers/ResultsTableRenderer.js";
-import { GoogleSheetsService } from "./services/GoogleSheetsService.js";
-import { InputForm } from "./ui/InputForm.js";
+import { FIELD_SLUGS, REQUIRED_FIELD_SLUGS } from "./config/constants.js";
+import { SpreadsheetIdExtractor } from "./core/SpreadsheetIdExtractor.js";
+import { GoogleSheetsApiClient } from "./core/GoogleSheetsApiClient.js";
+import { SheetRowParser } from "./core/SheetRowParser.js";
+import { SheetHeaderValidator } from "./core/SheetHeaderValidator.js";
+import { ProcessableTabsService } from "./services/ProcessableTabsService.js";
+import { FirstNFilter } from "./core/FirstNFilter.js";
+import { PortfolioMovementMapper } from "./core/PortfolioMovementMapper.js";
+import { XirrCalculator } from "./core/XirrCalculator.js";
+import { WeightedAgeCalculator } from "./core/WeightedAgeCalculator.js";
+import { PortfolioResultsCalculator } from "./services/PortfolioResultsCalculator.js";
 import { StatusView } from "./ui/StatusView.js";
+import { ResultsTableView } from "./ui/ResultsTableView.js";
+import { CalculationController } from "./app/CalculationController.js";
 
-export function createApp(documentRef = document) {
-    const todayProvider = () => AppConfig.today();
-    const financialMetrics = new FinancialMetrics(todayProvider);
-    const portfolioCalculator = new PortfolioCalculator(financialMetrics, todayProvider);
+export function bootstrap(documentRef = document) {
+  const spreadsheetIdExtractor = new SpreadsheetIdExtractor();
+  const sheetsApiClient = new GoogleSheetsApiClient();
+  const rowParser = new SheetRowParser(FIELD_SLUGS);
+  const headerValidator = new SheetHeaderValidator(REQUIRED_FIELD_SLUGS);
+  const processableTabsService = new ProcessableTabsService({
+    sheetsApiClient,
+    headerValidator,
+    rowParser,
+  });
 
-    return new AppController({
-        form: new InputForm({
-            spreadsheetUrlInput: documentRef.getElementById("spreadsheet-url"),
-            apiKeyInput: documentRef.getElementById("api-key"),
-            firstNInput: documentRef.getElementById("first-n"),
-            bulkInput: documentRef.getElementById("bulk-input"),
-            calculateButton: documentRef.getElementById("btn-calculate"),
-        }),
-        statusView: new StatusView(documentRef.getElementById("status")),
-        resultsContainer: documentRef.getElementById("results"),
-        spreadsheetIdExtractor: new SpreadsheetIdExtractor(),
-        bulkFormInputParser: new BulkFormInputParser(),
-        googleSheetsService: new GoogleSheetsService(new SheetRowParser()),
-        portfolioCalculator,
-        resultsTableRenderer: new ResultsTableRenderer(),
-    });
+  const portfolioResultsCalculator = new PortfolioResultsCalculator({
+    firstNFilter: new FirstNFilter(),
+    movementMapper: new PortfolioMovementMapper(),
+    xirrCalculator: new XirrCalculator(),
+    weightedAgeCalculator: new WeightedAgeCalculator(),
+  });
+
+  const controller = new CalculationController({
+    spreadsheetIdExtractor,
+    processableTabsService,
+    portfolioResultsCalculator,
+    statusView: new StatusView(documentRef.getElementById("status")),
+    resultsTableView: new ResultsTableView(documentRef.getElementById("results")),
+    buttonElement: documentRef.getElementById("btn-calculate"),
+    spreadsheetUrlElement: documentRef.getElementById("spreadsheet-url"),
+    apiKeyElement: documentRef.getElementById("api-key"),
+    firstNElement: documentRef.getElementById("first-n"),
+  });
+
+  controller.bind();
+  return controller;
 }
