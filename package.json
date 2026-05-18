@@ -1,0 +1,13 @@
+{
+  "name": "ml500-excel-parser",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "npx serve . --listen 8080",
+    "test": "jasmine --config=spec/support/jasmine.json"
+  },
+  "devDependencies": {
+    "jasmine": "^5.1.0"
+  }
+}

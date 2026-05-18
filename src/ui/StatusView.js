@@ -1,15 +1,15 @@
 export class StatusView {
-    constructor(element) {
-        this.element = element;
-    }
+  constructor(element) {
+    this.element = element;
+  }
 
-    show(message, type) {
-        this.element.textContent = message;
-        this.element.className = type;
-    }
+  show(message, type) {
+    this.element.textContent = message;
+    this.element.className = type;
+  }
 
-    clear() {
-        this.element.className = "";
-        this.element.textContent = "";
-    }
+  clear() {
+    this.element.className = "";
+    this.element.textContent = "";
+  }
 }
