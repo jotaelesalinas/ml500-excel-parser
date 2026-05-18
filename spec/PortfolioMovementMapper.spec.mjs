@@ -1,0 +1,59 @@
+import { PortfolioMovementMapper } from "../src/core/PortfolioMovementMapper.js";
+
+describe("PortfolioMovementMapper", () => {
+  it("maps buy and sell movements", () => {
+    const mapper = new PortfolioMovementMapper(() => "2026-01-10");
+
+    const result = mapper.map({
+      ticker: "AAPL",
+      nombre: "Apple",
+      fechac: "2026-01-01",
+      cantidad: "2",
+      precioc: "100",
+      fechav: "2026-01-05",
+      preciov: "120",
+      precioa: "",
+    });
+
+    expect(result).toEqual([
+      { action: "buy", date: "2026-01-01", ticker: "AAPL", amount: 200 },
+      { action: "sell", date: "2026-01-05", ticker: "AAPL", amount: 240 },
+    ]);
+  });
+
+  it("maps buy and current value movements", () => {
+    const mapper = new PortfolioMovementMapper(() => "2026-01-10");
+
+    const result = mapper.map({
+      ticker: "AAPL",
+      nombre: "Apple",
+      fechac: "2026-01-01",
+      cantidad: "2",
+      precioc: "100",
+      fechav: "",
+      preciov: "",
+      precioa: "130",
+    });
+
+    expect(result[1].action).toBe("valueToday");
+    expect(result[1].date).toBe("2026-01-10");
+    expect(result[1].amount).toBe(260);
+  });
+
+  it("throws when required fields are missing", () => {
+    const mapper = new PortfolioMovementMapper();
+
+    expect(() =>
+      mapper.map({
+        ticker: "",
+        nombre: "",
+        fechac: "",
+        cantidad: "",
+        precioc: "",
+        fechav: "",
+        preciov: "",
+        precioa: "",
+      }),
+    ).toThrow();
+  });
+});
