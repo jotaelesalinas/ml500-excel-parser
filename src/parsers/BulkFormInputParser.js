@@ -12,6 +12,7 @@ export class BulkFormInputParser {
       minDeposit: lines[3] || "",
       minInvestment: lines[4] || "",
       reinvest: this.#parseBoolean(lines[5]),
+      incremental: this.#parseBoolean(lines[6]),
     };
   }
 

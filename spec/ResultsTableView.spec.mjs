@@ -88,6 +88,45 @@ describe("ResultsTableView", () => {
     expect(container.innerHTML).toContain("<th>P/L %</th>");
   });
 
+  it("hides selected tab action log after clearing selection", () => {
+    const container = { innerHTML: "" };
+    const view = new ResultsTableView(container);
+    const result = {
+      top_n: 4,
+      tab: "Tab A",
+      XIRR: 12.34,
+      avg_age_y: 1.2,
+      deposited: 2000,
+      current: 2200,
+      invested: 1500,
+      depositCash: 300,
+      saleCash: 200,
+      cash: 500,
+      returns: 10,
+      log: [
+        {
+          date: "2026-01-01",
+          action: "Deposit",
+          qty: null,
+          amount: 1000,
+          deposited: 1000,
+          current: 1000,
+          invested: 0,
+          depositCash: 1000,
+          saleCash: 0,
+          cash: 1000,
+          returns: 0,
+        },
+      ],
+    };
+
+    view.selectedResultKey = "4::Tab A::0";
+    view.clearSelection();
+    view.render([result]);
+
+    expect(container.innerHTML).not.toContain("Action Log");
+  });
+
   it("escapes HTML special characters in tab names", () => {
     const container = { innerHTML: "" };
     const view = new ResultsTableView(container);

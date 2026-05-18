@@ -84,6 +84,8 @@
         }
         .toggle-switch input:checked + .toggle-slider { background: #1a73e8; }
         .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+        .toggle-switch input:disabled + .toggle-slider { background: #e0e0e0; cursor: not-allowed; }
+        .toggle-switch input:disabled + .toggle-slider::before { background: #f7f7f7; }
         #status { margin-top: 1rem; padding: 0.8rem; border-radius: 4px; display: none; }
         #status.error { display: block; background: #fce8e6; color: #c5221f; }
         #status.info { display: block; background: #e8f0fe; color: #1a73e8; }
@@ -98,6 +100,12 @@
         .action-log-section h2 { font-size: 1rem; margin-bottom: 0.45rem; color: #555; }
         .secondary-log-table { font-size: 0.88rem; color: #6a6a6a; }
         .secondary-log-table th { background: #fafafa; color: #707070; font-weight: 500; }
+        .secondary-log-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            box-shadow: 0 1px 0 #ddd;
+        }
         .secondary-log-table tbody tr.log-row-type-deposit { background: #f7fbff; }
         .secondary-log-table tbody tr.log-row-type-buy { background: #f7fcf7; }
         .secondary-log-table tbody tr.log-row-type-sell { background: #fffaf4; }
@@ -129,7 +137,7 @@
 
                 <div class="field field-group">
                     <label for="bulk-input">Bulk input</label>
-                    <textarea id="bulk-input" placeholder="Line 1: Google Sheets URL&#10;Line 2: Google API Key&#10;Line 3: First N values&#10;Line 4: Minimum deposit&#10;Line 5: Minimum investment&#10;Line 6: Reinvest (true/false)"></textarea>
+                    <textarea id="bulk-input" placeholder="Line 1: Google Sheets URL&#10;Line 2: Google API Key&#10;Line 3: First N values&#10;Line 4: Minimum deposit&#10;Line 5: Minimum investment&#10;Line 6: Reinvest (true/false)&#10;Line 7: Incremental (true/false)"></textarea>
                     <small>If this textarea has content, its first non-empty trimmed lines populate the form before loading.</small>
                 </div>
             </div>
@@ -163,6 +171,14 @@
                         <label for="reinvest">Reinvest</label>
                         <label class="toggle-switch" for="reinvest">
                             <input type="checkbox" id="reinvest">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="field toggle-field">
+                        <label for="incremental">Incremental</label>
+                        <label class="toggle-switch" for="incremental">
+                            <input type="checkbox" id="incremental">
                             <span class="toggle-slider"></span>
                         </label>
                     </div>

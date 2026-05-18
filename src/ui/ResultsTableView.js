@@ -45,6 +45,10 @@ export class ResultsTableView {
     this.#bindTabLinkEvents();
   }
 
+  clearSelection() {
+    this.selectedResultKey = null;
+  }
+
   #getSelectedResult(results) {
     if (!this.selectedResultKey) {
       return null;

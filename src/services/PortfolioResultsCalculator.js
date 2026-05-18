@@ -28,6 +28,7 @@ export class PortfolioResultsCalculator {
     const configuredMinDeposit = this.#toPositiveAmount(strategy.minDeposit, this.minDeposit);
     const configuredMinInvestment = this.#toPositiveAmount(strategy.minInvestment, this.minInvestment);
     const reinvest = Boolean(strategy.reinvest);
+    const incremental = reinvest && Boolean(strategy.incremental);
     const results = [];
 
     for (const firstN of firstNValues) {
@@ -45,6 +46,7 @@ export class PortfolioResultsCalculator {
         const currentByTicker = new Map();
         let depositCash = 0;
         let saleCash = 0;
+        let lastSaleReinvestment = 0;
         let valueToday = 0;
         let trackedDeposited = 0;
         let trackedInvested = 0;
@@ -80,6 +82,8 @@ export class PortfolioResultsCalculator {
             minDeposit: configuredMinDeposit,
             minInvestment: configuredMinInvestment,
             reinvest,
+            incremental,
+            lastSaleReinvestment,
           });
           if (allocation.depositTopUp > 0) {
             moneyIn.push({ date, amount: allocation.depositTopUp });
@@ -128,6 +132,7 @@ export class PortfolioResultsCalculator {
           });
           depositCash = +allocation.nextDepositCash.toFixed(2);
           saleCash = +allocation.nextSaleCash.toFixed(2);
+          lastSaleReinvestment = Math.floor(allocation.nextLastSaleReinvestment || 0);
 
           const sellMovements = movements.filter(
             (movement) => movement.date === date && movement.action === "sell",

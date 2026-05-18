@@ -89,6 +89,7 @@ describe("PortfolioResultsCalculator", () => {
             investedFromSales: 0,
             nextDepositCash: depositCash,
             nextSaleCash: saleCash,
+            nextLastSaleReinvestment: 0,
           };
         }
 
@@ -103,6 +104,7 @@ describe("PortfolioResultsCalculator", () => {
           investedFromSales: 0,
           nextDepositCash: 800,
           nextSaleCash: 0,
+          nextLastSaleReinvestment: 0,
         };
       }),
     };
@@ -137,6 +139,8 @@ describe("PortfolioResultsCalculator", () => {
       minDeposit: 1000,
       minInvestment: 200,
       reinvest: true,
+      incremental: false,
+      lastSaleReinvestment: 0,
     });
     expect(weeklyInvestmentPolicy.decide).toHaveBeenCalledWith({
       buyCount: 0,
@@ -145,6 +149,8 @@ describe("PortfolioResultsCalculator", () => {
       minDeposit: 1000,
       minInvestment: 200,
       reinvest: true,
+      incremental: false,
+      lastSaleReinvestment: 0,
     });
     expect(result.deposited).toBe(1000);
     expect(result.invested).toBe(240);

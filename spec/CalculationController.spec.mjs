@@ -28,6 +28,7 @@ describe("CalculationController", () => {
       },
       resultsTableView: {
         render: jasmine.createSpy("render"),
+        clearSelection: jasmine.createSpy("clearSelection"),
       },
       loadButtonElement,
       calculateButtonElement,
@@ -36,7 +37,8 @@ describe("CalculationController", () => {
       firstNElement: { value: "4, 10" },
       minDepositElement: { value: "1000" },
       minInvestmentElement: { value: "200" },
-      reinvestElement: { checked: false },
+      reinvestElement: { checked: false, addEventListener: jasmine.createSpy("addEventListener") },
+      incrementalElement: { checked: false, disabled: false },
       bulkInputElement: { value: "" },
       bulkFormInputParser: {
         parse: jasmine.createSpy("parse").and.returnValue({
@@ -46,6 +48,7 @@ describe("CalculationController", () => {
           minDeposit: "",
           minInvestment: "",
           reinvest: null,
+          incremental: null,
         }),
       },
       logger: { error: jasmine.createSpy("error") },
@@ -62,6 +65,7 @@ describe("CalculationController", () => {
 
     expect(deps.loadButtonElement.addEventListener).toHaveBeenCalledWith("click", jasmine.any(Function));
     expect(deps.calculateButtonElement.addEventListener).toHaveBeenCalledWith("click", jasmine.any(Function));
+    expect(deps.reinvestElement.addEventListener).toHaveBeenCalledWith("change", jasmine.any(Function));
   });
 
   it("starts with load button label", () => {
@@ -105,9 +109,10 @@ describe("CalculationController", () => {
     expect(deps.portfolioResultsCalculator.calculate).toHaveBeenCalledWith(
       [{ name: "Tab", entries: [] }],
       [4, 10],
-      { minDeposit: 1000, minInvestment: 200, reinvest: false },
+      { minDeposit: 1000, minInvestment: 200, reinvest: false, incremental: false },
     );
     expect(deps.statusView.clear).toHaveBeenCalled();
+    expect(deps.resultsTableView.clearSelection).toHaveBeenCalled();
     expect(deps.resultsTableView.render).toHaveBeenCalledWith([{ tab: "Tab" }]);
     expect(deps.calculateButtonElement.disabled).toBeFalse();
   });
@@ -136,6 +141,7 @@ describe("CalculationController", () => {
           minDeposit: "1500",
           minInvestment: "250",
           reinvest: true,
+          incremental: true,
         }),
       },
     });
@@ -154,7 +160,7 @@ describe("CalculationController", () => {
     expect(deps.portfolioResultsCalculator.calculate).toHaveBeenCalledWith(
       [{ name: "Tab", entries: [] }],
       [3, 8],
-      { minDeposit: 1500, minInvestment: 250, reinvest: true },
+      { minDeposit: 1500, minInvestment: 250, reinvest: true, incremental: true },
     );
   });
 

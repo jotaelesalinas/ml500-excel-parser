@@ -13,6 +13,7 @@ describe("BulkFormInputParser", () => {
       minDeposit: "",
       minInvestment: "",
       reinvest: null,
+      incremental: null,
     });
   });
 
@@ -28,13 +29,14 @@ describe("BulkFormInputParser", () => {
       minDeposit: "",
       minInvestment: "",
       reinvest: null,
+      incremental: null,
     });
   });
 
   it("parses optional strategy lines", () => {
     const parser = new BulkFormInputParser();
 
-    const parsed = parser.parse("url\nkey\n5\n1000\n200\ntrue");
+    const parsed = parser.parse("url\nkey\n5\n1000\n200\ntrue\nyes");
 
     expect(parsed).toEqual({
       spreadsheetUrl: "url",
@@ -43,6 +45,7 @@ describe("BulkFormInputParser", () => {
       minDeposit: "1000",
       minInvestment: "200",
       reinvest: true,
+      incremental: true,
     });
   });
 });

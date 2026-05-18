@@ -24,6 +24,7 @@ describe("WeeklyInvestmentPolicy", () => {
       investedFromSales: 0,
       nextDepositCash: 500,
       nextSaleCash: 300,
+      nextLastSaleReinvestment: 0,
     });
   });
 
@@ -49,6 +50,7 @@ describe("WeeklyInvestmentPolicy", () => {
     expect(result.investedFromSales).toBe(0);
     expect(result.nextDepositCash).toBe(800);
     expect(result.nextSaleCash).toBe(1300);
+    expect(result.nextLastSaleReinvestment).toBe(0);
   });
 
   it("adds reinvestment from sales in minimum-investment multiples", () => {
@@ -73,6 +75,7 @@ describe("WeeklyInvestmentPolicy", () => {
     expect(result.investedFromSales).toBe(1200);
     expect(result.nextDepositCash).toBe(800);
     expect(result.nextSaleCash).toBe(100);
+    expect(result.nextLastSaleReinvestment).toBe(0);
   });
 
   it("preserves the rounding-down behavior when splitting target across buys", () => {
@@ -93,6 +96,7 @@ describe("WeeklyInvestmentPolicy", () => {
     expect(result.investedFromDeposits).toBe(198);
     expect(result.nextDepositCash).toBe(802);
     expect(result.nextSaleCash).toBe(0);
+    expect(result.nextLastSaleReinvestment).toBe(0);
   });
 
   it("supports multiple top-ups when minimum deposit is below weekly minimum", () => {
@@ -112,5 +116,64 @@ describe("WeeklyInvestmentPolicy", () => {
     expect(result.investedToday).toBe(1000);
     expect(result.nextDepositCash).toBe(0);
     expect(result.nextSaleCash).toBe(0);
+    expect(result.nextLastSaleReinvestment).toBe(0);
+  });
+
+  it("starts incremental sale reinvestment at minimum investment when enough sale cash is available", () => {
+    const policy = new WeeklyInvestmentPolicy();
+
+    const result = policy.decide({
+      buyCount: 1,
+      depositCash: 0,
+      saleCash: 200,
+      minDeposit: 1000,
+      minInvestment: 200,
+      reinvest: true,
+      incremental: true,
+      lastSaleReinvestment: 0,
+    });
+
+    expect(result.saleReinvestment).toBe(200);
+    expect(result.investedFromSales).toBe(200);
+    expect(result.nextLastSaleReinvestment).toBe(200);
+  });
+
+  it("doubles incremental reinvestment and halves until it fits available sale cash", () => {
+    const policy = new WeeklyInvestmentPolicy();
+
+    const result = policy.decide({
+      buyCount: 1,
+      depositCash: 0,
+      saleCash: 500,
+      minDeposit: 1000,
+      minInvestment: 200,
+      reinvest: true,
+      incremental: true,
+      lastSaleReinvestment: 400,
+    });
+
+    expect(result.saleReinvestment).toBe(400);
+    expect(result.investedFromSales).toBe(400);
+    expect(result.nextSaleCash).toBe(100);
+    expect(result.nextLastSaleReinvestment).toBe(400);
+  });
+
+  it("resets incremental memory to zero when sale cash is below minimum investment", () => {
+    const policy = new WeeklyInvestmentPolicy();
+
+    const result = policy.decide({
+      buyCount: 1,
+      depositCash: 0,
+      saleCash: 199,
+      minDeposit: 1000,
+      minInvestment: 200,
+      reinvest: true,
+      incremental: true,
+      lastSaleReinvestment: 200,
+    });
+
+    expect(result.saleReinvestment).toBe(0);
+    expect(result.investedFromSales).toBe(0);
+    expect(result.nextLastSaleReinvestment).toBe(0);
   });
 });
