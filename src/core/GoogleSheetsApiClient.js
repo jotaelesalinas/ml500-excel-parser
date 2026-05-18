@@ -18,7 +18,7 @@ export class GoogleSheetsApiClient {
 
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(`Failed to fetch spreadsheet metadata (${response.status}): ${body}`);
+      throw this.#friendlyError("Could not read spreadsheet", response.status, body);
     }
 
     const data = await response.json();
@@ -31,10 +31,23 @@ export class GoogleSheetsApiClient {
 
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(`Failed to fetch sheet "${sheetName}" (${response.status}): ${body}`);
+      throw this.#friendlyError(`Could not read sheet "${sheetName}"`, response.status, body);
     }
 
     const data = await response.json();
     return data.values || [];
+  }
+
+  #friendlyError(context, status, rawBody) {
+    try {
+      const json = JSON.parse(rawBody);
+      const msg = json?.error?.message;
+      if (msg) return new Error(`${context}: ${msg}`);
+    } catch {}
+
+    if (status === 400) return new Error(`${context}: Bad request. Check the API key format.`);
+    if (status === 403) return new Error(`${context}: Access denied. Make sure the spreadsheet is shared publicly and the API key is valid.`);
+    if (status === 404) return new Error(`${context}: Not found. Check the spreadsheet URL.`);
+    return new Error(`${context} (HTTP ${status}).`);
   }
 }

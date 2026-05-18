@@ -40,6 +40,40 @@ describe("PortfolioMovementMapper", () => {
     expect(result[1].amount).toBe(260);
   });
 
+  it("throws when both fechav/preciov and precioa are set", () => {
+    const mapper = new PortfolioMovementMapper(() => "2026-01-10");
+
+    expect(() =>
+      mapper.map({
+        ticker: "AAPL",
+        nombre: "Apple",
+        fechac: "2026-01-01",
+        cantidad: "2",
+        precioc: "100",
+        fechav: "2026-01-05",
+        preciov: "120",
+        precioa: "130",
+      }),
+    ).toThrow();
+  });
+
+  it("parses precioc with thousands separator", () => {
+    const mapper = new PortfolioMovementMapper(() => "2026-01-10");
+
+    const result = mapper.map({
+      ticker: "AAPL",
+      nombre: "Apple",
+      fechac: "2026-01-01",
+      cantidad: "2",
+      precioc: "1,500",
+      fechav: "",
+      preciov: "",
+      precioa: "1,600",
+    });
+
+    expect(result[0].amount).toBe(3000);
+  });
+
   it("throws when required fields are missing", () => {
     const mapper = new PortfolioMovementMapper();
 

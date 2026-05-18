@@ -22,6 +22,8 @@ describe("ProcessableTabsService", () => {
 
     const logger = { info: jasmine.createSpy("info") };
 
+    const onProgress = jasmine.createSpy("onProgress");
+
     const service = new ProcessableTabsService({
       sheetsApiClient,
       headerValidator,
@@ -29,11 +31,13 @@ describe("ProcessableTabsService", () => {
       logger,
     });
 
-    const tabs = await service.fetchAll("sheet-id", "api-key");
+    const tabs = await service.fetchAll("sheet-id", "api-key", onProgress);
 
     expect(tabs).toEqual([{ name: "Valid", entries: [{ ticker: "AAPL" }] }]);
     expect(logger.info).toHaveBeenCalledTimes(1);
     expect(rowParser.parse).toHaveBeenCalledTimes(1);
+    expect(onProgress).toHaveBeenCalledWith("Fetching sheet list...");
+    expect(onProgress).toHaveBeenCalledWith('Fetching tab "Valid" (1/2)...');
   });
 
   it("throws when no processable tabs are found", async () => {
