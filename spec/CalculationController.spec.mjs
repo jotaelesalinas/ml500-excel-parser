@@ -28,6 +28,14 @@ describe("CalculationController", () => {
       spreadsheetUrlElement: { value: "https://docs.google.com/spreadsheets/d/abc/edit" },
       apiKeyElement: { value: "api-key" },
       firstNElement: { value: "4, 10" },
+      bulkInputElement: { value: "" },
+      bulkFormInputParser: {
+        parse: jasmine.createSpy("parse").and.returnValue({
+          spreadsheetUrl: "",
+          apiKey: "",
+          firstN: "",
+        }),
+      },
       logger: { error: jasmine.createSpy("error") },
       ...overrides,
     };
@@ -71,6 +79,34 @@ describe("CalculationController", () => {
     expect(deps.statusView.clear).toHaveBeenCalled();
     expect(deps.resultsTableView.render).toHaveBeenCalledWith([{ tab: "Tab" }]);
     expect(deps.buttonElement.disabled).toBeFalse();
+  });
+
+  it("applies bulk input before validation and calculation", async () => {
+    const { controller, deps } = createController({
+      spreadsheetUrlElement: { value: "" },
+      apiKeyElement: { value: "" },
+      firstNElement: { value: "" },
+      bulkInputElement: { value: "url\napi-key\n3, 8" },
+      bulkFormInputParser: {
+        parse: jasmine.createSpy("parse").and.returnValue({
+          spreadsheetUrl: "https://docs.google.com/spreadsheets/d/from-bulk/edit",
+          apiKey: "api-key-from-bulk",
+          firstN: "3, 8",
+        }),
+      },
+    });
+
+    await controller.handleCalculate();
+
+    expect(deps.bulkFormInputParser.parse).toHaveBeenCalledWith("url\napi-key\n3, 8");
+    expect(deps.spreadsheetIdExtractor.extract).toHaveBeenCalledWith(
+      "https://docs.google.com/spreadsheets/d/from-bulk/edit",
+    );
+    expect(deps.processableTabsService.fetchAll).toHaveBeenCalledWith("sheet-id", "api-key-from-bulk");
+    expect(deps.portfolioResultsCalculator.calculate).toHaveBeenCalledWith(
+      [{ name: "Tab", entries: [] }],
+      [3, 8],
+    );
   });
 
   it("shows error when service fails", async () => {

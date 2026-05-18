@@ -21,13 +21,17 @@ describe("ResultsTableView", () => {
         XIRR: 12.34,
         avg_age_y: 1.2,
         deposited: 2000,
+        current: 2200,
         invested: 1500,
         cash: 500,
+        returns: 10,
       },
     ]);
 
     expect(container.innerHTML).toContain("<table>");
     expect(container.innerHTML).toContain("Tab A");
+    expect(container.innerHTML).toContain("Current");
+    expect(container.innerHTML).toContain("Returns");
     expect(container.innerHTML).toContain("12.34 %");
   });
 });

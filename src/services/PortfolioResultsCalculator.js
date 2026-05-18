@@ -91,14 +91,21 @@ export class PortfolioResultsCalculator {
 
         const avgAge = moneyIn.length > 0 ? this.weightedAgeCalculator.calculate(moneyIn) : 0;
 
+        const deposited = +moneyIn.reduce((sum, entry) => sum + entry.amount, 0).toFixed(2);
+        const invested = +valueToday.toFixed(2);
+        const current = +(invested + cash).toFixed(2);
+        const returnsPct = deposited > 0 ? +(((current / deposited) - 1) * 100).toFixed(2) : 0;
+
         results.push({
           top_n: firstN,
           tab: tabName,
           XIRR: Number.isNaN(rate) ? "N/A" : +((rate * 100).toFixed(2)),
           avg_age_y: +avgAge.toFixed(2),
-          deposited: +moneyIn.reduce((sum, entry) => sum + entry.amount, 0).toFixed(2),
-          invested: +valueToday.toFixed(2),
+          deposited,
+          current,
+          invested,
           cash: +cash.toFixed(2),
+          returns: returnsPct,
         });
       });
     }

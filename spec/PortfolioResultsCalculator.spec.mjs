@@ -36,8 +36,10 @@ describe("PortfolioResultsCalculator", () => {
         XIRR: 12.34,
         avg_age_y: 1.23,
         deposited: 2000,
+        current: 2200,
         invested: 1700,
         cash: 500,
+        returns: 10,
       },
     ]);
     expect(xirrCalculator.calculate).toHaveBeenCalledTimes(1);

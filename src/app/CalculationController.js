@@ -9,6 +9,8 @@ export class CalculationController {
     spreadsheetUrlElement,
     apiKeyElement,
     firstNElement,
+    bulkInputElement,
+    bulkFormInputParser,
     logger = console,
   }) {
     this.spreadsheetIdExtractor = spreadsheetIdExtractor;
@@ -20,6 +22,8 @@ export class CalculationController {
     this.spreadsheetUrlElement = spreadsheetUrlElement;
     this.apiKeyElement = apiKeyElement;
     this.firstNElement = firstNElement;
+    this.bulkInputElement = bulkInputElement;
+    this.bulkFormInputParser = bulkFormInputParser;
     this.logger = logger;
   }
 
@@ -30,6 +34,8 @@ export class CalculationController {
   }
 
   async handleCalculate() {
+    this.applyBulkInput();
+
     const urlInput = this.spreadsheetUrlElement.value.trim();
     const apiKey = this.apiKeyElement.value.trim();
     const firstNRaw = this.firstNElement.value.trim();
@@ -80,5 +86,23 @@ export class CalculationController {
       .split(/\s*,\s*/g)
       .map(Number)
       .filter((value) => value > 0);
+  }
+
+  applyBulkInput() {
+    const bulkInput = this.bulkInputElement?.value || "";
+    if (!bulkInput.trim() || !this.bulkFormInputParser) {
+      return;
+    }
+
+    const parsed = this.bulkFormInputParser.parse(bulkInput);
+    if (parsed.spreadsheetUrl) {
+      this.spreadsheetUrlElement.value = parsed.spreadsheetUrl;
+    }
+    if (parsed.apiKey) {
+      this.apiKeyElement.value = parsed.apiKey;
+    }
+    if (parsed.firstN) {
+      this.firstNElement.value = parsed.firstN;
+    }
   }
 }

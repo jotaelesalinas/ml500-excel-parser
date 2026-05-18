@@ -1,6 +1,15 @@
 export class GoogleSheetsApiClient {
-  constructor(fetchFn = fetch) {
-    this.fetchFn = fetchFn;
+  constructor(fetchFn) {
+    const resolvedFetchFn =
+      fetchFn ||
+      ((...args) => {
+        if (typeof globalThis.fetch !== "function") {
+          throw new Error("Fetch API is not available in this environment.");
+        }
+        return globalThis.fetch(...args);
+      });
+
+    this.fetchFn = resolvedFetchFn;
   }
 
   async fetchSheetTabs(spreadsheetId, apiKey) {

@@ -1,6 +1,28 @@
 import { GoogleSheetsApiClient } from "../src/core/GoogleSheetsApiClient.js";
 
 describe("GoogleSheetsApiClient", () => {
+  it("uses global fetch when no fetch function is injected", async () => {
+    const originalFetch = globalThis.fetch;
+    const globalFetchSpy = jasmine.createSpy("fetch").and.resolveTo({
+      ok: true,
+      json: async () => ({
+        sheets: [{ properties: { title: "Global" } }],
+      }),
+    });
+
+    globalThis.fetch = globalFetchSpy;
+
+    try {
+      const client = new GoogleSheetsApiClient();
+      const tabs = await client.fetchSheetTabs("sheet-id", "api-key");
+
+      expect(globalFetchSpy).toHaveBeenCalledTimes(1);
+      expect(tabs).toEqual(["Global"]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("fetches sheet tabs", async () => {
     const fetchFn = jasmine.createSpy("fetchFn").and.resolveTo({
       ok: true,

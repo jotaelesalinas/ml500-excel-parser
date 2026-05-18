@@ -12,6 +12,7 @@ import { PortfolioResultsCalculator } from "./services/PortfolioResultsCalculato
 import { StatusView } from "./ui/StatusView.js";
 import { ResultsTableView } from "./ui/ResultsTableView.js";
 import { CalculationController } from "./app/CalculationController.js";
+import { BulkFormInputParser } from "./parsers/BulkFormInputParser.js";
 
 export function bootstrap(documentRef = document) {
   const spreadsheetIdExtractor = new SpreadsheetIdExtractor();
@@ -41,6 +42,8 @@ export function bootstrap(documentRef = document) {
     spreadsheetUrlElement: documentRef.getElementById("spreadsheet-url"),
     apiKeyElement: documentRef.getElementById("api-key"),
     firstNElement: documentRef.getElementById("first-n"),
+    bulkInputElement: documentRef.getElementById("bulk-input"),
+    bulkFormInputParser: new BulkFormInputParser(),
   });
 
   controller.bind();
