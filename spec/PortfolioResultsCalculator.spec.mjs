@@ -67,7 +67,84 @@ describe("PortfolioResultsCalculator", () => {
     expect(result.XIRR).toBe("N/A");
   });
 
-  it("invests available cash in multiples of minimum investment when reinvest is enabled", () => {
+  it("delegates weekly allocation decisions to the injected policy", () => {
+    const weeklyInvestmentPolicy = {
+      decide: jasmine.createSpy("decide").and.callFake(({ buyCount, depositCash, saleCash }) => {
+        if (buyCount === 0) {
+          return {
+            depositTopUp: 0,
+            baseToBuy: 0,
+            saleReinvestment: 0,
+            targetToBuy: 0,
+            investedByPosition: 0,
+            investedToday: 0,
+            investedFromDeposits: 0,
+            investedFromSales: 0,
+            nextDepositCash: depositCash,
+            nextSaleCash: saleCash,
+          };
+        }
+
+        return {
+          depositTopUp: 1000,
+          baseToBuy: 200,
+          saleReinvestment: 0,
+          targetToBuy: 200,
+          investedByPosition: 200,
+          investedToday: 200,
+          investedFromDeposits: 200,
+          investedFromSales: 0,
+          nextDepositCash: 800,
+          nextSaleCash: 0,
+        };
+      }),
+    };
+
+    const calculator = new PortfolioResultsCalculator({
+      firstNFilter: { filter: () => [{ id: 1 }] },
+      movementMapper: {
+        map: () => [
+          { action: "buy", date: "2026-01-01", ticker: "AAA", amount: 1000, positionId: 1 },
+          { action: "valueToday", date: "2026-01-02", ticker: "AAA", amount: 1200, positionId: 1 },
+        ],
+      },
+      weeklyInvestmentPolicy,
+      xirrCalculator: { calculate: () => 0.1 },
+      weightedAgeCalculator: { calculate: () => 1 },
+      logger: { warn: jasmine.createSpy("warn") },
+      minDeposit: 1000,
+      minInvestment: 200,
+      todayProvider: () => "2026-01-02",
+    });
+
+    const result = calculator.calculate(
+      [{ name: "Tab Delegation", entries: [{ id: 1 }] }],
+      [1],
+      { reinvest: true, minDeposit: 1000, minInvestment: 200 },
+    )[0];
+
+    expect(weeklyInvestmentPolicy.decide).toHaveBeenCalledWith({
+      buyCount: 1,
+      depositCash: 0,
+      saleCash: 0,
+      minDeposit: 1000,
+      minInvestment: 200,
+      reinvest: true,
+    });
+    expect(weeklyInvestmentPolicy.decide).toHaveBeenCalledWith({
+      buyCount: 0,
+      depositCash: 800,
+      saleCash: 0,
+      minDeposit: 1000,
+      minInvestment: 200,
+      reinvest: true,
+    });
+    expect(result.deposited).toBe(1000);
+    expect(result.invested).toBe(240);
+    expect(result.cash).toBe(800);
+  });
+
+  it("reinvests sales in multiples while keeping weekly minimum investment from deposits", () => {
     const calculator = new PortfolioResultsCalculator({
       firstNFilter: { filter: () => [{ id: 1 }, { id: 2 }] },
       movementMapper: {
@@ -98,9 +175,9 @@ describe("PortfolioResultsCalculator", () => {
       { reinvest: true, minDeposit: 1000, minInvestment: 200 },
     )[0];
 
-    expect(result.cash).toBe(60);
-    expect(result.invested).toBe(1100);
-    expect(result.current).toBe(1160);
+    expect(result.cash).toBe(660);
+    expect(result.invested).toBe(440);
+    expect(result.current).toBe(1100);
     expect(result.deposited).toBe(1000);
   });
 

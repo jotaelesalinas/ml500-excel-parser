@@ -1,4 +1,5 @@
 import { MIN_DEPOSIT, MIN_INVESTMENT, defaultTodayProvider } from "../config/constants.js";
+import { WeeklyInvestmentPolicy } from "../core/WeeklyInvestmentPolicy.js";
 
 export class PortfolioResultsCalculator {
   constructor({
@@ -9,6 +10,7 @@ export class PortfolioResultsCalculator {
     logger = console,
     minDeposit = MIN_DEPOSIT,
     minInvestment = MIN_INVESTMENT,
+    weeklyInvestmentPolicy = new WeeklyInvestmentPolicy(),
     todayProvider = defaultTodayProvider,
   }) {
     this.firstNFilter = firstNFilter;
@@ -18,6 +20,7 @@ export class PortfolioResultsCalculator {
     this.logger = logger;
     this.minDeposit = minDeposit;
     this.minInvestment = minInvestment;
+    this.weeklyInvestmentPolicy = weeklyInvestmentPolicy;
     this.todayProvider = todayProvider;
   }
 
@@ -37,7 +40,8 @@ export class PortfolioResultsCalculator {
         const moneyIn = [];
         const moneyOut = [];
         const buyScaleByPositionId = new Map();
-        let cash = 0;
+        let depositCash = 0;
+        let saleCash = 0;
         let valueToday = 0;
 
         for (const date of dates) {
@@ -45,40 +49,32 @@ export class PortfolioResultsCalculator {
             (movement) => movement.date === date && movement.action === "buy",
           );
 
-          const targetToBuy = this.#dailyInvestmentTarget({
-            cash,
+          const allocation = this.weeklyInvestmentPolicy.decide({
             buyCount: buyMovements.length,
+            depositCash,
+            saleCash,
+            minDeposit: configuredMinDeposit,
             minInvestment: configuredMinInvestment,
             reinvest,
           });
-
-          let deposited = 0;
-          while (cash < targetToBuy) {
-            cash += configuredMinDeposit;
-            deposited += configuredMinDeposit;
+          if (allocation.depositTopUp > 0) {
+            moneyIn.push({ date, amount: allocation.depositTopUp });
           }
-          if (deposited > 0) {
-            moneyIn.push({ date, amount: deposited });
-          }
-
-          const investedByPosition = buyMovements.length > 0
-            ? Math.floor(targetToBuy / buyMovements.length)
-            : 0;
-          const investedToday = investedByPosition * buyMovements.length;
 
           buyMovements.forEach((movement) => {
             if (movement.amount <= 0 || movement.positionId == null) {
               return;
             }
-            buyScaleByPositionId.set(movement.positionId, investedByPosition / movement.amount);
+            buyScaleByPositionId.set(movement.positionId, allocation.investedByPosition / movement.amount);
           });
 
-          cash -= investedToday;
+          depositCash = allocation.nextDepositCash;
+          saleCash = allocation.nextSaleCash;
 
           const toSell = movements
             .filter((movement) => movement.date === date && movement.action === "sell")
             .reduce((sum, movement) => sum + this.#scaledAmount(movement, buyScaleByPositionId), 0);
-          cash += toSell;
+          saleCash += toSell;
 
           const currentValue = movements
             .filter((movement) => movement.date === date && movement.action === "valueToday")
@@ -94,12 +90,12 @@ export class PortfolioResultsCalculator {
         if (moneyOut.length > 0) {
           const last = moneyOut[moneyOut.length - 1];
           if (last.date === today) {
-            last.amount = +(last.amount + cash).toFixed(2);
+            last.amount = +(last.amount + depositCash + saleCash).toFixed(2);
           } else {
-            moneyOut.push({ date: today, amount: +cash.toFixed(2) });
+            moneyOut.push({ date: today, amount: +(depositCash + saleCash).toFixed(2) });
           }
         } else {
-          moneyOut.push({ date: today, amount: +cash.toFixed(2) });
+          moneyOut.push({ date: today, amount: +(depositCash + saleCash).toFixed(2) });
         }
 
         const xirrFlows = [
@@ -119,6 +115,7 @@ export class PortfolioResultsCalculator {
 
         const deposited = +moneyIn.reduce((sum, entry) => sum + entry.amount, 0).toFixed(2);
         const invested = +valueToday.toFixed(2);
+        const cash = depositCash + saleCash;
         const current = +(invested + cash).toFixed(2);
         const returnsPct = deposited > 0 ? +(((current / deposited) - 1) * 100).toFixed(2) : 0;
 
@@ -137,22 +134,6 @@ export class PortfolioResultsCalculator {
     }
 
     return results;
-  }
-
-  #dailyInvestmentTarget({ cash, buyCount, minInvestment, reinvest }) {
-    if (buyCount === 0) {
-      return 0;
-    }
-
-    if (!reinvest) {
-      return minInvestment;
-    }
-
-    if (cash >= minInvestment) {
-      return Math.floor(cash / minInvestment) * minInvestment;
-    }
-
-    return minInvestment;
   }
 
   #scaledAmount(movement, buyScaleByPositionId) {

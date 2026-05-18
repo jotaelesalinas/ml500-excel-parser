@@ -8,6 +8,7 @@ import { FirstNFilter } from "./core/FirstNFilter.js";
 import { PortfolioMovementMapper } from "./core/PortfolioMovementMapper.js";
 import { XirrCalculator } from "./core/XirrCalculator.js";
 import { WeightedAgeCalculator } from "./core/WeightedAgeCalculator.js";
+import { WeeklyInvestmentPolicy } from "./core/WeeklyInvestmentPolicy.js";
 import { PortfolioResultsCalculator } from "./services/PortfolioResultsCalculator.js";
 import { StatusView } from "./ui/StatusView.js";
 import { ResultsTableView } from "./ui/ResultsTableView.js";
@@ -28,6 +29,7 @@ export function bootstrap(documentRef = document) {
   const portfolioResultsCalculator = new PortfolioResultsCalculator({
     firstNFilter: new FirstNFilter(),
     movementMapper: new PortfolioMovementMapper(),
+    weeklyInvestmentPolicy: new WeeklyInvestmentPolicy(),
     xirrCalculator: new XirrCalculator(),
     weightedAgeCalculator: new WeightedAgeCalculator(),
   });
