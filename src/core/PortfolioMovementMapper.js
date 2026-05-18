@@ -24,6 +24,7 @@ export class PortfolioMovementMapper {
       action: "buy",
       date: entry.fechac,
       ticker: entry.ticker,
+      qty: quantity,
       amount: buyAmount,
       positionId,
     };
@@ -42,6 +43,7 @@ export class PortfolioMovementMapper {
           action: "sell",
           date: entry.fechav,
           ticker: entry.ticker,
+          qty: quantity,
           amount: sellAmount,
           positionId,
         },
@@ -62,6 +64,7 @@ export class PortfolioMovementMapper {
           action: "valueToday",
           date: this.todayProvider(),
           ticker: entry.ticker,
+          qty: quantity,
           amount: currentAmount,
           positionId,
         },

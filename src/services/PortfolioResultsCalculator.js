@@ -39,10 +39,34 @@ export class PortfolioResultsCalculator {
 
         const moneyIn = [];
         const moneyOut = [];
+        const actionLog = [];
         const buyScaleByPositionId = new Map();
+        const openPositionById = new Map();
+        const currentByTicker = new Map();
         let depositCash = 0;
         let saleCash = 0;
         let valueToday = 0;
+        let trackedDeposited = 0;
+        let trackedInvested = 0;
+
+        const addLogRow = ({ date, action, qty = null, amount = 0 }) => {
+          const cash = depositCash + saleCash;
+          const current = trackedInvested + cash;
+          const returns = trackedDeposited > 0 ? (((current / trackedDeposited) - 1) * 100) : 0;
+          actionLog.push({
+            date,
+            action,
+            qty: qty == null ? null : +qty.toFixed(6),
+            amount: +amount.toFixed(2),
+            deposited: +trackedDeposited.toFixed(2),
+            current: +current.toFixed(2),
+            invested: +trackedInvested.toFixed(2),
+            depositCash: +depositCash.toFixed(2),
+            saleCash: +saleCash.toFixed(2),
+            cash: +cash.toFixed(2),
+            returns: +returns.toFixed(2),
+          });
+        };
 
         for (const date of dates) {
           const buyMovements = movements.filter(
@@ -59,6 +83,9 @@ export class PortfolioResultsCalculator {
           });
           if (allocation.depositTopUp > 0) {
             moneyIn.push({ date, amount: allocation.depositTopUp });
+            depositCash += allocation.depositTopUp;
+            trackedDeposited += allocation.depositTopUp;
+            addLogRow({ date, action: "Deposit", amount: allocation.depositTopUp });
           }
 
           buyMovements.forEach((movement) => {
@@ -68,22 +95,86 @@ export class PortfolioResultsCalculator {
             buyScaleByPositionId.set(movement.positionId, allocation.investedByPosition / movement.amount);
           });
 
-          depositCash = allocation.nextDepositCash;
-          saleCash = allocation.nextSaleCash;
+          const validBuys = buyMovements
+            .map((movement) => ({
+              movement,
+              scaledAmount: this.#scaledAmount(movement, buyScaleByPositionId),
+              scaledQty: this.#scaledQuantity(movement, buyScaleByPositionId),
+            }))
+            .filter(({ scaledAmount }) => scaledAmount > 0);
 
-          const toSell = movements
-            .filter((movement) => movement.date === date && movement.action === "sell")
-            .reduce((sum, movement) => sum + this.#scaledAmount(movement, buyScaleByPositionId), 0);
-          saleCash += toSell;
+          let remainingFromDeposits = allocation.investedFromDeposits;
+          let remainingFromSales = allocation.investedFromSales;
+          validBuys.forEach(({ movement, scaledAmount, scaledQty }, index) => {
+            const rowsLeft = validBuys.length - index;
+            const investedFromDeposits = this.#portionAmount(remainingFromDeposits, rowsLeft);
+            const investedFromSales = this.#portionAmount(remainingFromSales, rowsLeft);
+            remainingFromDeposits = +(remainingFromDeposits - investedFromDeposits).toFixed(2);
+            remainingFromSales = +(remainingFromSales - investedFromSales).toFixed(2);
+            depositCash = +(depositCash - investedFromDeposits).toFixed(2);
+            saleCash = +(saleCash - investedFromSales).toFixed(2);
+            trackedInvested = +(trackedInvested + scaledAmount).toFixed(2);
+            openPositionById.set(movement.positionId, {
+              ticker: movement.ticker,
+              qty: scaledQty > 0 ? scaledQty : 0,
+              cost: scaledAmount,
+            });
+            addLogRow({
+              date,
+              action: `Buy ${movement.ticker}`,
+              qty: scaledQty > 0 ? scaledQty : null,
+              amount: scaledAmount,
+            });
+          });
+          depositCash = +allocation.nextDepositCash.toFixed(2);
+          saleCash = +allocation.nextSaleCash.toFixed(2);
 
-          const currentValue = movements
-            .filter((movement) => movement.date === date && movement.action === "valueToday")
+          const sellMovements = movements.filter(
+            (movement) => movement.date === date && movement.action === "sell",
+          );
+          sellMovements.forEach((movement) => {
+            const scaledAmount = this.#scaledAmount(movement, buyScaleByPositionId);
+            if (scaledAmount <= 0) {
+              return;
+            }
+            const scaledQty = this.#scaledQuantity(movement, buyScaleByPositionId);
+            const position = movement.positionId != null ? openPositionById.get(movement.positionId) : null;
+            const costReleased = position ? position.cost : 0;
+            if (movement.positionId != null) {
+              openPositionById.delete(movement.positionId);
+            }
+            trackedInvested = +(trackedInvested - costReleased).toFixed(2);
+            saleCash = +(saleCash + scaledAmount).toFixed(2);
+            addLogRow({
+              date,
+              action: `Sell ${movement.ticker}`,
+              qty: scaledQty > 0 ? scaledQty : null,
+              amount: scaledAmount,
+            });
+          });
+
+          const currentMovements = movements.filter(
+            (movement) => movement.date === date && movement.action === "valueToday",
+          );
+          const currentValue = currentMovements
             .reduce((sum, movement) => sum + this.#scaledAmount(movement, buyScaleByPositionId), 0);
 
           if (currentValue > 0) {
             valueToday += currentValue;
             moneyOut.push({ date, amount: +currentValue.toFixed(2) });
           }
+          currentMovements.forEach((movement) => {
+            const scaledAmount = this.#scaledAmount(movement, buyScaleByPositionId);
+            if (scaledAmount <= 0) {
+              return;
+            }
+            const scaledQty = this.#scaledQuantity(movement, buyScaleByPositionId);
+            const tickerTotals = currentByTicker.get(movement.ticker) || { date, qty: 0, amount: 0 };
+            tickerTotals.date = date;
+            tickerTotals.qty = +(tickerTotals.qty + scaledQty).toFixed(6);
+            tickerTotals.amount = +(tickerTotals.amount + scaledAmount).toFixed(2);
+            currentByTicker.set(movement.ticker, tickerTotals);
+          });
         }
 
         const today = this.todayProvider();
@@ -119,7 +210,32 @@ export class PortfolioResultsCalculator {
         const current = +(invested + cash).toFixed(2);
         const returnsPct = deposited > 0 ? +(((current / deposited) - 1) * 100).toFixed(2) : 0;
 
-        results.push({
+        const openCostByTicker = new Map();
+        openPositionById.forEach((position) => {
+          const prev = openCostByTicker.get(position.ticker) || 0;
+          openCostByTicker.set(position.ticker, +(prev + position.cost).toFixed(2));
+        });
+        [...currentByTicker.keys()].sort().forEach((ticker) => {
+          const currentTotals = currentByTicker.get(ticker);
+          const costBeforeValuation = openCostByTicker.get(ticker) || 0;
+          const diffAmount = +(currentTotals.amount - costBeforeValuation).toFixed(2);
+          trackedInvested = +(trackedInvested + diffAmount).toFixed(2);
+          addLogRow({
+            date: currentTotals.date,
+            action: `Diff ${ticker}`,
+            qty: null,
+            amount: diffAmount,
+          });
+        });
+
+        trackedInvested = invested;
+        addLogRow({
+          date: today,
+          action: "Final snapshot",
+          amount: 0,
+        });
+
+        const result = {
           top_n: firstN,
           tab: tabName,
           XIRR: Number.isNaN(rate) ? "N/A" : +((rate * 100).toFixed(2)),
@@ -127,9 +243,17 @@ export class PortfolioResultsCalculator {
           deposited,
           current,
           invested,
+          depositCash: +depositCash.toFixed(2),
+          saleCash: +saleCash.toFixed(2),
           cash: +cash.toFixed(2),
           returns: returnsPct,
+        };
+        Object.defineProperty(result, "log", {
+          value: actionLog,
+          enumerable: false,
+          writable: false,
         });
+        results.push(result);
       });
     }
 
@@ -142,6 +266,25 @@ export class PortfolioResultsCalculator {
       return 0;
     }
     return +(movement.amount * scale).toFixed(2);
+  }
+
+  #scaledQuantity(movement, buyScaleByPositionId) {
+    const rawQty = Number(movement.qty);
+    if (!Number.isFinite(rawQty) || rawQty <= 0) {
+      return 0;
+    }
+    const scale = movement.positionId != null ? buyScaleByPositionId.get(movement.positionId) : null;
+    if (scale == null) {
+      return 0;
+    }
+    return +(rawQty * scale).toFixed(6);
+  }
+
+  #portionAmount(remainingAmount, rowsLeft) {
+    if (rowsLeft <= 1) {
+      return +remainingAmount.toFixed(2);
+    }
+    return +(remainingAmount / rowsLeft).toFixed(2);
   }
 
   #toPositiveAmount(rawValue, fallback) {

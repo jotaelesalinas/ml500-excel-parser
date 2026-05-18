@@ -38,10 +38,17 @@ describe("PortfolioResultsCalculator", () => {
         deposited: 1000,
         current: 1026.67,
         invested: 226.67,
+        depositCash: 800,
+        saleCash: 0,
         cash: 800,
         returns: 2.67,
       },
     ]);
+    const diffRow = results[0].log.find((row) => row.action === "Diff AAPL");
+    expect(diffRow).toBeDefined();
+    expect(diffRow.qty).toBeNull();
+    expect(diffRow.amount).toBe(26.67);
+    expect(results[0].log.some((row) => row.action.startsWith("Current "))).toBeFalse();
     expect(xirrCalculator.calculate).toHaveBeenCalledTimes(1);
     expect(weightedAgeCalculator.calculate).toHaveBeenCalledTimes(1);
   });
@@ -283,6 +290,8 @@ describe("PortfolioResultsCalculator", () => {
       deposited: 0,
       current: 0,
       invested: 0,
+      depositCash: 0,
+      saleCash: 0,
       cash: 0,
       returns: 0,
     });
