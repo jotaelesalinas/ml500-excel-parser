@@ -39,6 +39,7 @@ export class CalculationController {
     this.loadedTabs = null;
     this.loadedCacheKey = null;
     this.pendingLoadPromise = null;
+    this.activeProcessCount = 0;
 
     this.loadButtonLabelDefault = "Load data";
     this.loadButtonLabelLoaded = "Reload";
@@ -80,12 +81,12 @@ export class CalculationController {
       return;
     }
 
-    const tabs = await this.ensureDataLoaded();
-    if (!tabs) {
-      return;
-    }
-
+    this.beginProcessing();
     try {
+      const tabs = await this.ensureDataLoaded();
+      if (!tabs) {
+        return;
+      }
       this.statusView.show(`Calculating results for ${tabs.length} tab(s)...`, "info");
       this.resultsTableView.clearSelection?.();
       const results = this.portfolioResultsCalculator.calculate(tabs, firstNValues, strategy);
@@ -94,6 +95,8 @@ export class CalculationController {
     } catch (error) {
       this.statusView.show(`Error: ${error.message}`, "error");
       this.logger.error(error);
+    } finally {
+      this.endProcessing();
     }
   }
 
@@ -124,7 +127,7 @@ export class CalculationController {
       return this.loadedTabs;
     }
 
-    this.loadButtonElement.disabled = true;
+    this.beginProcessing();
     this.loadButtonElement.textContent = this.loadButtonLabelLoading;
     this.statusView.show("Loading data from Google Sheets...", "info");
 
@@ -150,7 +153,7 @@ export class CalculationController {
         return null;
       })
       .finally(() => {
-        this.loadButtonElement.disabled = false;
+        this.endProcessing();
         if (this.pendingLoadPromise === loadPromise) {
           this.pendingLoadPromise = null;
         }
@@ -237,6 +240,22 @@ export class CalculationController {
 
   resetLoadButtonLabel() {
     this.loadButtonElement.textContent = this.loadButtonLabelDefault;
+  }
+
+  beginProcessing() {
+    this.activeProcessCount += 1;
+    this.syncProcessingState();
+  }
+
+  endProcessing() {
+    this.activeProcessCount = Math.max(0, this.activeProcessCount - 1);
+    this.syncProcessingState();
+  }
+
+  syncProcessingState() {
+    const isProcessing = this.activeProcessCount > 0;
+    this.loadButtonElement.disabled = isProcessing;
+    this.calculateButtonElement.disabled = isProcessing;
   }
 
   parseStrategyInputs() {
