@@ -30,7 +30,7 @@ describe("ResultsTableView", () => {
       },
     ]);
 
-    expect(container.innerHTML).toContain("<table>");
+    expect(container.innerHTML).toContain("<table class=\"results-table\">");
     expect(container.innerHTML).toContain("Tab A");
     expect(container.innerHTML).toContain('class="tab-log-link"');
     expect(container.innerHTML).toContain("Current");
@@ -304,5 +304,118 @@ describe("ResultsTableView", () => {
     expect(container.innerHTML).toContain('class="log-row-type-diff"');
     expect(container.innerHTML).toContain(">Diff AAA</td>");
     expect(container.innerHTML).toContain(">Diff AAA</td>\n        <td class=\"num\"></td>");
+  });
+
+  it("sorts results ascending and descending by a numeric field", () => {
+    const container = { innerHTML: "" };
+    const view = new ResultsTableView(container);
+    const results = [
+      {
+        top_n: 3,
+        tab: "Tab C",
+        XIRR: 4,
+        avg_age_y: 1,
+        deposited: 1200,
+        current: 1300,
+        invested: 1000,
+        depositCash: 200,
+        saleCash: 0,
+        cash: 200,
+        returns: 8.33,
+      },
+      {
+        top_n: 1,
+        tab: "Tab A",
+        XIRR: 2,
+        avg_age_y: 1,
+        deposited: 1000,
+        current: 1100,
+        invested: 900,
+        depositCash: 100,
+        saleCash: 0,
+        cash: 100,
+        returns: 10,
+      },
+      {
+        top_n: 2,
+        tab: "Tab B",
+        XIRR: 3,
+        avg_age_y: 1,
+        deposited: 1100,
+        current: 1200,
+        invested: 950,
+        depositCash: 150,
+        saleCash: 0,
+        cash: 150,
+        returns: 9.09,
+      },
+    ];
+
+    view.sortState = { field: "top_n", direction: "asc", hasSorted: true };
+    view.render(results);
+    expect(view.results.map((result) => result.tab)).toEqual(["Tab A", "Tab B", "Tab C"]);
+    expect(container.innerHTML).toContain("results-table is-user-sorted");
+
+    view.sortState = { field: "top_n", direction: "desc", hasSorted: true };
+    view.render(view.results);
+    expect(view.results.map((result) => result.tab)).toEqual(["Tab C", "Tab B", "Tab A"]);
+  });
+
+  it("keeps previous order for ties when sorting", () => {
+    const container = { innerHTML: "" };
+    const view = new ResultsTableView(container);
+    const results = [
+      {
+        top_n: 1,
+        tab: "Tab A",
+        XIRR: 2,
+        avg_age_y: 1,
+        deposited: 1000,
+        current: 1200,
+        invested: 900,
+        depositCash: 100,
+        saleCash: 0,
+        cash: 100,
+        returns: 20,
+      },
+      {
+        top_n: 2,
+        tab: "Tab B",
+        XIRR: 3,
+        avg_age_y: 1,
+        deposited: 1000,
+        current: 1100,
+        invested: 900,
+        depositCash: 100,
+        saleCash: 0,
+        cash: 100,
+        returns: 10,
+      },
+      {
+        top_n: 3,
+        tab: "Tab C",
+        XIRR: 4,
+        avg_age_y: 1,
+        deposited: 1000,
+        current: 1300,
+        invested: 900,
+        depositCash: 100,
+        saleCash: 0,
+        cash: 100,
+        returns: 30,
+      },
+    ];
+
+    view.sortState = { field: "returns", direction: "asc", hasSorted: true };
+    view.render(results);
+    expect(view.results.map((result) => result.tab)).toEqual(["Tab B", "Tab A", "Tab C"]);
+
+    view.results[0].deposited = 2000;
+    view.results[1].deposited = 2000;
+    view.results[2].deposited = 3000;
+
+    view.sortState = { field: "deposited", direction: "asc", hasSorted: true };
+    view.render(view.results);
+    expect(view.results.map((result) => result.tab)).toEqual(["Tab B", "Tab A", "Tab C"]);
   });
 });

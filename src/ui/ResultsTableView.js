@@ -3,26 +3,60 @@ export class ResultsTableView {
     this.containerElement = containerElement;
     this.results = [];
     this.selectedResultKey = null;
+    this.sortState = {
+      field: null,
+      direction: "asc",
+      hasSorted: false,
+    };
+    this.resultIds = new WeakMap();
+    this.nextResultId = 0;
   }
 
   render(results) {
-    this.results = results;
     if (results.length === 0) {
       this.containerElement.innerHTML = "<p>No results.</p>";
+      this.results = [];
       this.selectedResultKey = null;
       return;
     }
 
-    const selectedResult = this.#getSelectedResult(results);
+    const sortedResults = this.#sortResults(results);
+    this.results = sortedResults;
+    const selectedResult = this.#getSelectedResult(sortedResults);
+    const columns = [
+      { field: "top_n", label: "Top N", numeric: true },
+      { field: "tab", label: "Tab", numeric: false },
+      { field: "deposited", label: "Deposited", numeric: true },
+      { field: "current", label: "Current", numeric: true },
+      { field: "invested", label: "Invested", numeric: true },
+      { field: "depositCash", label: "Deposit $$", numeric: true },
+      { field: "saleCash", label: "Sale $$", numeric: true },
+      { field: "pl", label: "P/L", numeric: true },
+      { field: "returns", label: "P/L %", numeric: true },
+      { field: "avg_age_y", label: "Age (Y)", numeric: true },
+      { field: "XIRR", label: "XIRR", numeric: true },
+    ];
 
-    let html = `<table>
-        <thead><tr>
-            <th>Top N</th><th>Tab</th><th>Deposited</th><th>Current</th>
-            <th>Invested</th><th>Deposit $$</th><th>Sale $$</th><th>P/L</th><th>P/L %</th><th>Age (Y)</th><th>XIRR</th>
-        </tr></thead><tbody>`;
+    const headerCells = columns.map((column) => {
+      const isActiveSort = this.sortState.hasSorted && this.sortState.field === column.field;
+      const classes = ["result-sort-header"];
+      if (column.numeric) {
+        classes.push("num");
+      }
+      if (isActiveSort) {
+        classes.push(`is-sorted-${this.sortState.direction}`);
+      }
+      const ariaSortValue = isActiveSort
+        ? (this.sortState.direction === "asc" ? "ascending" : "descending")
+        : "none";
+      return `<th class="${classes.join(" ")}" data-sort-field="${column.field}" tabindex="0" role="button" aria-sort="${ariaSortValue}">${column.label}</th>`;
+    }).join("");
 
-    results.forEach((result, index) => {
-      const rowKey = this.#buildResultKey(result, index);
+    let html = `<table class="results-table${this.sortState.hasSorted ? " is-user-sorted" : ""}">
+        <thead><tr>${headerCells}</tr></thead><tbody>`;
+
+    sortedResults.forEach((result) => {
+      const rowKey = this.#buildResultKey(result);
       const pl = Number(result.current) - Number(result.deposited);
       html += `<tr>
             <td class="num">${result.top_n}</td>
@@ -42,6 +76,7 @@ export class ResultsTableView {
     html += "</tbody></table>";
     html += this.#buildLogTable(selectedResult);
     this.containerElement.innerHTML = html;
+    this.#bindSortHeaderEvents();
     this.#bindTabLinkEvents();
   }
 
@@ -53,16 +88,140 @@ export class ResultsTableView {
     if (!this.selectedResultKey) {
       return null;
     }
-    const selected = results.find((result, index) => this.#buildResultKey(result, index) === this.selectedResultKey);
-    if (!selected) {
-      this.selectedResultKey = null;
-      return null;
+
+    const selected = results.find((result) => this.#buildResultKey(result) === this.selectedResultKey);
+    if (selected) {
+      return selected;
     }
-    return selected;
+
+    const legacySelected = this.#findSelectedResultByLegacyKey(results, this.selectedResultKey);
+    if (legacySelected) {
+      this.selectedResultKey = this.#buildResultKey(legacySelected);
+      return legacySelected;
+    }
+
+    this.selectedResultKey = null;
+    return null;
   }
 
-  #buildResultKey(result, index) {
-    return `${result.top_n}::${result.tab}::${index}`;
+  #findSelectedResultByLegacyKey(results, selectedResultKey) {
+    const keyParts = selectedResultKey.split("::");
+    if (keyParts.length < 3) {
+      return null;
+    }
+    const indexPart = keyParts[keyParts.length - 1];
+    const index = Number(indexPart);
+    if (!Number.isInteger(index) || index < 0 || index >= results.length) {
+      return null;
+    }
+    const expectedTopN = keyParts[0];
+    const expectedTab = keyParts.slice(1, -1).join("::");
+    const result = results[index];
+    if (String(result.top_n) !== expectedTopN || String(result.tab) !== expectedTab) {
+      return null;
+    }
+    return result;
+  }
+
+  #buildResultKey(result) {
+    if (result == null || typeof result !== "object") {
+      return String(result);
+    }
+
+    let id = this.resultIds.get(result);
+    if (!id) {
+      this.nextResultId += 1;
+      id = this.nextResultId;
+      this.resultIds.set(result, id);
+    }
+    return `${result.top_n}::${result.tab}::${id}`;
+  }
+
+  #sortResults(results) {
+    const indexedResults = results.map((result, index) => ({ result, index }));
+    if (!this.sortState.hasSorted || !this.sortState.field) {
+      return indexedResults.map((entry) => entry.result);
+    }
+
+    const directionFactor = this.sortState.direction === "asc" ? 1 : -1;
+    indexedResults.sort((leftEntry, rightEntry) => {
+      const comparison = this.#compareResultsByField(leftEntry.result, rightEntry.result, this.sortState.field);
+      if (comparison !== 0) {
+        return comparison * directionFactor;
+      }
+      return leftEntry.index - rightEntry.index;
+    });
+
+    return indexedResults.map((entry) => entry.result);
+  }
+
+  #compareResultsByField(leftResult, rightResult, field) {
+    if (field === "tab") {
+      return String(leftResult.tab).localeCompare(String(rightResult.tab));
+    }
+
+    const leftValue = this.#getSortableNumericValue(leftResult, field);
+    const rightValue = this.#getSortableNumericValue(rightResult, field);
+    const leftIsFinite = Number.isFinite(leftValue);
+    const rightIsFinite = Number.isFinite(rightValue);
+
+    if (!leftIsFinite && !rightIsFinite) {
+      return 0;
+    }
+    if (!leftIsFinite) {
+      return 1;
+    }
+    if (!rightIsFinite) {
+      return -1;
+    }
+    if (leftValue < rightValue) {
+      return -1;
+    }
+    if (leftValue > rightValue) {
+      return 1;
+    }
+    return 0;
+  }
+
+  #getSortableNumericValue(result, field) {
+    if (field === "pl") {
+      return Number(result.current) - Number(result.deposited);
+    }
+    return Number(result[field]);
+  }
+
+  #bindSortHeaderEvents() {
+    if (typeof this.containerElement.querySelectorAll !== "function") {
+      return;
+    }
+
+    const headers = this.containerElement.querySelectorAll("th[data-sort-field]");
+    headers.forEach((header) => {
+      const sortField = header.dataset.sortField;
+      if (!sortField) {
+        return;
+      }
+
+      header.addEventListener("click", () => this.#handleSortByField(sortField));
+      header.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+        event.preventDefault();
+        this.#handleSortByField(sortField);
+      });
+    });
+  }
+
+  #handleSortByField(sortField) {
+    if (this.sortState.field === sortField) {
+      this.sortState.direction = this.sortState.direction === "asc" ? "desc" : "asc";
+    } else {
+      this.sortState.field = sortField;
+      this.sortState.direction = "asc";
+    }
+    this.sortState.hasSorted = true;
+    this.render(this.results);
   }
 
   #buildLogTable(result) {

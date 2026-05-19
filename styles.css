@@ -209,6 +209,36 @@ textarea.form-control {
   color: #475569;
   border-bottom: 1px solid var(--bs-border-color);
 }
+#results > table.results-table thead th.result-sort-header {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+#results > table.results-table thead th.result-sort-header:focus-visible {
+  outline: 2px solid rgba(30, 144, 255, 0.35);
+  outline-offset: -2px;
+}
+#results > table.results-table.is-user-sorted thead th.result-sort-header::after {
+  content: "";
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-left: 0.35rem;
+  opacity: 0;
+  vertical-align: middle;
+  border-left: 0.28rem solid transparent;
+  border-right: 0.28rem solid transparent;
+}
+#results > table.results-table.is-user-sorted thead th.result-sort-header.is-sorted-asc::after {
+  border-bottom: 0.35rem solid #94a3b8;
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+#results > table.results-table.is-user-sorted thead th.result-sort-header.is-sorted-desc::after {
+  border-top: 0.35rem solid #94a3b8;
+  opacity: 0.95;
+  transform: translateY(1px);
+}
 #results tbody td {
   padding: 0.55rem 0.75rem;
   border-bottom: 1px solid var(--app-table-divider);
