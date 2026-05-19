@@ -62,13 +62,13 @@ Your API key is never stored — it only lives in the browser page while you use
 - Enter one or more Top N values, comma-separated (e.g. `4, 10, 20`)
 - Enter **Minimum deposit** (default `1000`)
 - Enter **Minimum investment** (default `200`)
-- Toggle **Reinvest**
 
-**Bulk input** (right textarea): paste lines in order — URL, API key, Top N values, minimum deposit, minimum investment, reinvest (`true`/`false`). The fields on the left will be filled automatically when you click Calculate.
+**Bulk input** (right textarea): paste lines in order — URL, API key, Top N values, minimum deposit, minimum investment. The fields on the left will be filled automatically when you click Calculate.
 
 ## Investment allocation rules
 
-- On each buy date, the app invests at least the **Minimum investment** amount across all buys on that date.
-- The amount is split equally per buy row, rounded down to whole euros.
-- If there is not enough cash, the app injects cash in chunks of **Minimum deposit**.
-- When **Reinvest** is enabled and available cash is above the minimum investment, the app invests as much as possible in multiples of the minimum investment.
+The app calculates three strategies for every Top N + tab combination:
+
+- **Fixed**: invests the weekly minimum only from deposits; sales remain as cash.
+- **Reinv**: keeps the weekly minimum and reinvests sales in multiples of the minimum investment.
+- **Incr**: same as Reinv, but sale reinvestment follows the incremental memory policy.

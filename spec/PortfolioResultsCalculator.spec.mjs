@@ -1,6 +1,10 @@
 import { PortfolioResultsCalculator } from "../src/services/PortfolioResultsCalculator.js";
 
 describe("PortfolioResultsCalculator", () => {
+  function byStrat(results, strat) {
+    return results.find((entry) => entry.strat === strat);
+  }
+
   it("calculates portfolio metrics for one tab and one First N", () => {
     const firstNFilter = { filter: jasmine.createSpy("filter").and.callFake((entries) => entries) };
 
@@ -29,28 +33,31 @@ describe("PortfolioResultsCalculator", () => {
       [4],
     );
 
-    expect(results).toEqual([
-      {
-        top_n: 4,
-        tab: "Tab A",
-        XIRR: 12.34,
-        avg_age_y: 1.23,
-        deposited: 1000,
-        current: 1026.67,
-        invested: 226.67,
-        depositCash: 800,
-        saleCash: 0,
-        cash: 800,
-        returns: 2.67,
-      },
-    ]);
-    const diffRow = results[0].log.find((row) => row.action === "Diff AAPL");
+    expect(results.length).toBe(3);
+    expect(results.map((entry) => entry.strat)).toEqual(["Fixed", "Reinv", "Incr"]);
+
+    const result = byStrat(results, "Fixed");
+    expect(result).toEqual({
+      top_n: 4,
+      tab: "Tab A",
+      strat: "Fixed",
+      XIRR: 12.34,
+      avg_age_y: 1.23,
+      deposited: 1000,
+      current: 1026.67,
+      invested: 226.67,
+      depositCash: 800,
+      saleCash: 0,
+      cash: 800,
+      returns: 2.67,
+    });
+    const diffRow = result.log.find((row) => row.action === "Diff AAPL");
     expect(diffRow).toBeDefined();
     expect(diffRow.qty).toBeNull();
     expect(diffRow.amount).toBe(26.67);
-    expect(results[0].log.some((row) => row.action.startsWith("Current "))).toBeFalse();
-    expect(xirrCalculator.calculate).toHaveBeenCalledTimes(1);
-    expect(weightedAgeCalculator.calculate).toHaveBeenCalledTimes(1);
+    expect(result.log.some((row) => row.action.startsWith("Current "))).toBeFalse();
+    expect(xirrCalculator.calculate).toHaveBeenCalledTimes(3);
+    expect(weightedAgeCalculator.calculate).toHaveBeenCalledTimes(3);
   });
 
   it("sets XIRR to N/A when xirr calculation fails", () => {
@@ -69,7 +76,10 @@ describe("PortfolioResultsCalculator", () => {
       todayProvider: () => "2026-01-02",
     });
 
-    const result = calculator.calculate([{ name: "Tab A", entries: [{}] }], [1])[0];
+    const result = byStrat(
+      calculator.calculate([{ name: "Tab A", entries: [{}] }], [1]),
+      "Fixed",
+    );
 
     expect(result.XIRR).toBe("N/A");
   });
@@ -126,15 +136,55 @@ describe("PortfolioResultsCalculator", () => {
       todayProvider: () => "2026-01-02",
     });
 
-    const result = calculator.calculate(
+    const result = byStrat(calculator.calculate(
       [{ name: "Tab Delegation", entries: [{ id: 1 }] }],
       [1],
-      { reinvest: true, minDeposit: 1000, minInvestment: 200 },
-    )[0];
+      { minDeposit: 1000, minInvestment: 200 },
+    ), "Fixed");
 
     expect(weeklyInvestmentPolicy.decide).toHaveBeenCalledWith({
       buyCount: 1,
       depositCash: 0,
+      saleCash: 0,
+      minDeposit: 1000,
+      minInvestment: 200,
+      reinvest: false,
+      incremental: false,
+      lastSaleReinvestment: 0,
+    });
+    expect(weeklyInvestmentPolicy.decide).toHaveBeenCalledWith({
+      buyCount: 1,
+      depositCash: 0,
+      saleCash: 0,
+      minDeposit: 1000,
+      minInvestment: 200,
+      reinvest: true,
+      incremental: false,
+      lastSaleReinvestment: 0,
+    });
+    expect(weeklyInvestmentPolicy.decide).toHaveBeenCalledWith({
+      buyCount: 1,
+      depositCash: 0,
+      saleCash: 0,
+      minDeposit: 1000,
+      minInvestment: 200,
+      reinvest: true,
+      incremental: true,
+      lastSaleReinvestment: 0,
+    });
+    expect(weeklyInvestmentPolicy.decide).toHaveBeenCalledWith({
+      buyCount: 0,
+      depositCash: 800,
+      saleCash: 0,
+      minDeposit: 1000,
+      minInvestment: 200,
+      reinvest: false,
+      incremental: false,
+      lastSaleReinvestment: 0,
+    });
+    expect(weeklyInvestmentPolicy.decide).toHaveBeenCalledWith({
+      buyCount: 0,
+      depositCash: 800,
       saleCash: 0,
       minDeposit: 1000,
       minInvestment: 200,
@@ -149,7 +199,7 @@ describe("PortfolioResultsCalculator", () => {
       minDeposit: 1000,
       minInvestment: 200,
       reinvest: true,
-      incremental: false,
+      incremental: true,
       lastSaleReinvestment: 0,
     });
     expect(result.deposited).toBe(1000);
@@ -182,11 +232,11 @@ describe("PortfolioResultsCalculator", () => {
       todayProvider: () => "2026-01-04",
     });
 
-    const result = calculator.calculate(
+    const result = byStrat(calculator.calculate(
       [{ name: "Tab A", entries: [{ id: 1 }, { id: 2 }] }],
       [2],
-      { reinvest: true, minDeposit: 1000, minInvestment: 200 },
-    )[0];
+      { minDeposit: 1000, minInvestment: 200 },
+    ), "Reinv");
 
     expect(result.cash).toBe(660);
     expect(result.invested).toBe(440);
@@ -221,11 +271,11 @@ describe("PortfolioResultsCalculator", () => {
       todayProvider: () => "2026-01-10",
     });
 
-    const result = calculator.calculate(
+    const result = byStrat(calculator.calculate(
       [{ name: "Tab A", entries: [{ id: 1 }, { id: 2 }] }],
       [5],
-      { reinvest: false, minDeposit: 1000, minInvestment: 200 },
-    )[0];
+      { minDeposit: 1000, minInvestment: 200 },
+    ), "Fixed");
 
     expect(result.deposited).toBe(1000);
     expect(result.cash).toBe(920);
@@ -260,11 +310,11 @@ describe("PortfolioResultsCalculator", () => {
       todayProvider: () => "2026-01-02",
     });
 
-    const result = calculator.calculate(
+    const result = byStrat(calculator.calculate(
       [{ name: "Tab A", entries: [{ id: 1 }, { id: 2 }, { id: 3 }] }],
       [10],
-      { reinvest: false, minDeposit: 1000, minInvestment: 200 },
-    )[0];
+      { minDeposit: 1000, minInvestment: 200 },
+    ), "Fixed");
 
     expect(result.deposited).toBe(1000);
     expect(result.invested).toBe(198);
@@ -286,11 +336,12 @@ describe("PortfolioResultsCalculator", () => {
       todayProvider: () => "2026-01-02",
     });
 
-    const result = calculator.calculate([{ name: "Empty Tab", entries: [] }], [4])[0];
+    const result = byStrat(calculator.calculate([{ name: "Empty Tab", entries: [] }], [4]), "Fixed");
 
     expect(result).toEqual({
       top_n: 4,
       tab: "Empty Tab",
+      strat: "Fixed",
       XIRR: "N/A",
       avg_age_y: 0,
       deposited: 0,
@@ -323,11 +374,11 @@ describe("PortfolioResultsCalculator", () => {
       todayProvider: () => "2026-01-02",
     });
 
-    const result = calculator.calculate(
+    const result = byStrat(calculator.calculate(
       [{ name: "Tab A", entries: [{ id: 1, ticker: "AAA" }, { id: 2, ticker: "BBB" }] }],
       [2],
-      { reinvest: false, minDeposit: 300, minInvestment: 1000 },
-    )[0];
+      { minDeposit: 300, minInvestment: 1000 },
+    ), "Fixed");
 
     expect(result.deposited).toBe(1200);
     expect(result.invested).toBe(1200);
@@ -371,11 +422,11 @@ describe("PortfolioResultsCalculator", () => {
       todayProvider: () => "2026-01-10",
     });
 
-    const result = calculator.calculate(
+    const result = byStrat(calculator.calculate(
       [{ name: "Tab B", entries: [{ id: 1 }, { id: 2 }] }],
       [9],
-      { reinvest: false, minDeposit: 1000, minInvestment: 900 },
-    )[0];
+      { minDeposit: 1000, minInvestment: 900 },
+    ), "Fixed");
 
     expect(result.top_n).toBe(9);
     expect(result.tab).toBe("Tab B");
@@ -414,11 +465,11 @@ describe("PortfolioResultsCalculator", () => {
       todayProvider: () => "2026-01-02",
     });
 
-    const result = calculator.calculate(
+    const result = byStrat(calculator.calculate(
       [{ name: "Tab C", entries: [{ id: 1 }] }],
       [1],
-      { reinvest: true, minDeposit: 1000, minInvestment: 200 },
-    )[0];
+      { minDeposit: 1000, minInvestment: 200 },
+    ), "Reinv");
 
     expect(result.deposited).toBe(1000);
     expect(result.cash).toBe(1200);

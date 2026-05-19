@@ -12,8 +12,6 @@ export class CalculationController {
     firstNElement,
     minDepositElement,
     minInvestmentElement,
-    reinvestElement,
-    incrementalElement,
     bulkInputElement,
     bulkFormInputParser,
     logger = console,
@@ -30,8 +28,6 @@ export class CalculationController {
     this.firstNElement = firstNElement;
     this.minDepositElement = minDepositElement;
     this.minInvestmentElement = minInvestmentElement;
-    this.reinvestElement = reinvestElement;
-    this.incrementalElement = incrementalElement;
     this.bulkInputElement = bulkInputElement;
     this.bulkFormInputParser = bulkFormInputParser;
     this.logger = logger;
@@ -55,11 +51,6 @@ export class CalculationController {
     this.calculateButtonElement.addEventListener("click", () => {
       this.handleCalculate();
     });
-
-    this.reinvestElement?.addEventListener("change", () => {
-      this.syncIncrementalAvailability();
-    });
-    this.syncIncrementalAvailability();
   }
 
   async handleLoadButton() {
@@ -229,13 +220,6 @@ export class CalculationController {
     if (parsed.minInvestment && this.minInvestmentElement) {
       this.minInvestmentElement.value = parsed.minInvestment;
     }
-    if (parsed.reinvest != null && this.reinvestElement) {
-      this.reinvestElement.checked = parsed.reinvest;
-    }
-    if (parsed.incremental != null && this.incrementalElement) {
-      this.incrementalElement.checked = parsed.incremental;
-    }
-    this.syncIncrementalAvailability();
   }
 
   resetLoadButtonLabel() {
@@ -278,20 +262,7 @@ export class CalculationController {
     return {
       minDeposit,
       minInvestment,
-      reinvest: Boolean(this.reinvestElement?.checked),
-      incremental: Boolean(this.reinvestElement?.checked && this.incrementalElement?.checked),
     };
-  }
-
-  syncIncrementalAvailability() {
-    if (!this.incrementalElement) {
-      return;
-    }
-    const reinvestEnabled = Boolean(this.reinvestElement?.checked);
-    this.incrementalElement.disabled = !reinvestEnabled;
-    if (!reinvestEnabled) {
-      this.incrementalElement.checked = false;
-    }
   }
 
   #parsePositiveNumber(rawValue, validationMessage) {

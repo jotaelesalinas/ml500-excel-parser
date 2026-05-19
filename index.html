@@ -33,7 +33,7 @@
                     </div>
                     <div class="col-md-6 d-flex flex-column">
                         <label for="bulk-input" class="form-label">Bulk input</label>
-                        <textarea id="bulk-input" class="form-control flex-grow-1" placeholder="Line 1: Google Sheets URL&#10;Line 2: Google API Key&#10;Line 3: First N values&#10;Line 4: Minimum deposit&#10;Line 5: Minimum investment&#10;Line 6: Reinvest (true/false)&#10;Line 7: Incremental (true/false)"></textarea>
+                        <textarea id="bulk-input" class="form-control flex-grow-1" placeholder="Line 1: Google Sheets URL&#10;Line 2: Google API Key&#10;Line 3: First N values&#10;Line 4: Minimum deposit&#10;Line 5: Minimum investment"></textarea>
                         <div class="form-text">If this textarea has content, its first non-empty trimmed lines populate the form before loading.</div>
                     </div>
                 </div>
@@ -59,19 +59,10 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="toggle-row">
-                            <label for="reinvest">Reinvest</label>
-                            <label class="toggle-switch" for="reinvest">
-                                <input type="checkbox" id="reinvest">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="toggle-row">
-                            <label for="incremental">Incremental</label>
-                            <label class="toggle-switch" for="incremental">
-                                <input type="checkbox" id="incremental">
-                                <span class="toggle-slider"></span>
-                            </label>
+                        <div class="strategy-notes">
+                            <p><strong>Fixed:</strong> invests only the weekly minimum from deposits; sale proceeds remain as cash.</p>
+                            <p><strong>Reinv:</strong> keeps the weekly minimum investment and also reinvests sales in multiples of the minimum investment.</p>
+                            <p><strong>Incr:</strong> same as Reinv, but sale reinvestment follows the recent incremental memory behavior.</p>
                         </div>
                     </div>
                 </div>

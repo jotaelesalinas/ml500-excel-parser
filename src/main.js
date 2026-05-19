@@ -47,8 +47,6 @@ export function bootstrap(documentRef = document) {
     firstNElement: documentRef.getElementById("first-n"),
     minDepositElement: documentRef.getElementById("min-deposit"),
     minInvestmentElement: documentRef.getElementById("min-investment"),
-    reinvestElement: documentRef.getElementById("reinvest"),
-    incrementalElement: documentRef.getElementById("incremental"),
     bulkInputElement: documentRef.getElementById("bulk-input"),
     bulkFormInputParser: new BulkFormInputParser(),
   });

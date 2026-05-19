@@ -26,6 +26,7 @@ export class ResultsTableView {
     const columns = [
       { field: "top_n", label: "Top N", numeric: true },
       { field: "tab", label: "Tab", numeric: false },
+      { field: "strat", label: "Strat", numeric: false },
       { field: "deposited", label: "Deposited", numeric: true },
       { field: "current", label: "Current", numeric: true },
       { field: "invested", label: "Invested", numeric: true },
@@ -61,6 +62,7 @@ export class ResultsTableView {
       html += `<tr>
             <td class="num">${result.top_n}</td>
             <td><a href="#" class="tab-log-link" data-result-key="${this.#escapeHtml(rowKey)}">${this.#escapeHtml(result.tab)}</a></td>
+            <td>${this.#escapeHtml(result.strat || "")}</td>
             <td class="num">${result.deposited.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
             <td class="num">${result.current.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
             <td class="num">${result.invested.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
@@ -156,8 +158,8 @@ export class ResultsTableView {
   }
 
   #compareResultsByField(leftResult, rightResult, field) {
-    if (field === "tab") {
-      return String(leftResult.tab).localeCompare(String(rightResult.tab));
+    if (field === "tab" || field === "strat") {
+      return String(leftResult[field] || "").localeCompare(String(rightResult[field] || ""));
     }
 
     const leftValue = this.#getSortableNumericValue(leftResult, field);
@@ -244,7 +246,7 @@ export class ResultsTableView {
       </tr>`).join("");
 
     return `<section class="action-log-section">
-      <h2 id="tab-log-header">Action Log · Top ${result.top_n} · ${this.#escapeHtml(result.tab)}</h2>
+      <h2 id="tab-log-header">Action Log · Top ${result.top_n} · ${this.#escapeHtml(result.tab)} · ${this.#escapeHtml(result.strat || "")}</h2>
       <table class="secondary-log-table">
         <thead><tr>
           <th>Date</th><th>Action</th><th>Qty</th><th>Amount</th>
