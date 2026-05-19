@@ -191,9 +191,12 @@ textarea.form-control {
   border-radius: var(--bs-border-radius-lg);
   border-collapse: separate;
   border-spacing: 0;
-  overflow: hidden;
-  font-size: 0.875rem;
+  overflow: visible;
+  font-size: 0.8rem;
   margin-bottom: 0;
+}
+#results > table {
+  overflow: hidden;
 }
 #results thead th {
   background: #f8fafc;
@@ -249,6 +252,7 @@ textarea.form-control {
   z-index: 2;
   background: rgba(248, 250, 252, 0.95);
   backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--bs-border-color);
   font-size: 0.62rem;
   padding: 0.5rem 0.6rem;
 }
