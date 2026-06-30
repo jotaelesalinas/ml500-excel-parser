@@ -9,7 +9,7 @@ describe("WeeklyInvestmentPolicy", () => {
       depositCash: 500,
       saleCash: 300,
       minDeposit: 1000,
-      minInvestment: 200,
+      minInvestment: 100,
       reinvest: true,
     });
 
@@ -36,20 +36,20 @@ describe("WeeklyInvestmentPolicy", () => {
       depositCash: 0,
       saleCash: 1300,
       minDeposit: 1000,
-      minInvestment: 200,
+      minInvestment: 100,
       reinvest: false,
     });
 
     expect(result.depositTopUp).toBe(0);
-    expect(result.baseToBuy).toBe(200);
+    expect(result.baseToBuy).toBe(100);
     expect(result.saleReinvestment).toBe(0);
-    expect(result.targetToBuy).toBe(200);
-    expect(result.investedByPosition).toBe(100);
-    expect(result.investedToday).toBe(200);
+    expect(result.targetToBuy).toBe(100);
+    expect(result.investedByPosition).toBe(50);
+    expect(result.investedToday).toBe(100);
     expect(result.investedFromDeposits).toBe(0);
-    expect(result.investedFromSales).toBe(200);
+    expect(result.investedFromSales).toBe(100);
     expect(result.nextDepositCash).toBe(0);
-    expect(result.nextSaleCash).toBe(1100);
+    expect(result.nextSaleCash).toBe(1200);
     expect(result.nextLastSaleReinvestment).toBe(0);
   });
 
@@ -59,18 +59,18 @@ describe("WeeklyInvestmentPolicy", () => {
     const result = policy.decide({
       buyCount: 1,
       depositCash: 0,
-      saleCash: 150,
+      saleCash: 50,
       minDeposit: 1000,
-      minInvestment: 200,
+      minInvestment: 100,
       reinvest: false,
     });
 
     expect(result.depositTopUp).toBe(1000);
-    expect(result.investedToday).toBe(200);
+    expect(result.investedToday).toBe(100);
     expect(result.investedFromSales).toBe(0);
-    expect(result.investedFromDeposits).toBe(200);
-    expect(result.nextDepositCash).toBe(800);
-    expect(result.nextSaleCash).toBe(150);
+    expect(result.investedFromDeposits).toBe(100);
+    expect(result.nextDepositCash).toBe(900);
+    expect(result.nextSaleCash).toBe(50);
     expect(result.nextLastSaleReinvestment).toBe(0);
   });
 
@@ -82,20 +82,20 @@ describe("WeeklyInvestmentPolicy", () => {
       depositCash: 0,
       saleCash: 1300,
       minDeposit: 1000,
-      minInvestment: 200,
+      minInvestment: 100,
       reinvest: true,
     });
 
     expect(result.depositTopUp).toBe(1000);
-    expect(result.baseToBuy).toBe(200);
-    expect(result.saleReinvestment).toBe(1200);
+    expect(result.baseToBuy).toBe(100);
+    expect(result.saleReinvestment).toBe(1300);
     expect(result.targetToBuy).toBe(1400);
     expect(result.investedByPosition).toBe(1400);
     expect(result.investedToday).toBe(1400);
-    expect(result.investedFromDeposits).toBe(200);
-    expect(result.investedFromSales).toBe(1200);
-    expect(result.nextDepositCash).toBe(800);
-    expect(result.nextSaleCash).toBe(100);
+    expect(result.investedFromDeposits).toBe(100);
+    expect(result.investedFromSales).toBe(1300);
+    expect(result.nextDepositCash).toBe(900);
+    expect(result.nextSaleCash).toBe(0);
     expect(result.nextLastSaleReinvestment).toBe(0);
   });
 
@@ -107,15 +107,15 @@ describe("WeeklyInvestmentPolicy", () => {
       depositCash: 0,
       saleCash: 0,
       minDeposit: 1000,
-      minInvestment: 200,
+      minInvestment: 100,
       reinvest: false,
     });
 
-    expect(result.targetToBuy).toBe(200);
-    expect(result.investedByPosition).toBe(66);
-    expect(result.investedToday).toBe(198);
-    expect(result.investedFromDeposits).toBe(198);
-    expect(result.nextDepositCash).toBe(802);
+    expect(result.targetToBuy).toBe(100);
+    expect(result.investedByPosition).toBe(33);
+    expect(result.investedToday).toBe(99);
+    expect(result.investedFromDeposits).toBe(99);
+    expect(result.nextDepositCash).toBe(901);
     expect(result.nextSaleCash).toBe(0);
     expect(result.nextLastSaleReinvestment).toBe(0);
   });
@@ -148,15 +148,15 @@ describe("WeeklyInvestmentPolicy", () => {
       depositCash: 0,
       saleCash: 200,
       minDeposit: 1000,
-      minInvestment: 200,
+      minInvestment: 100,
       reinvest: true,
       incremental: true,
       lastSaleReinvestment: 0,
     });
 
-    expect(result.saleReinvestment).toBe(200);
-    expect(result.investedFromSales).toBe(200);
-    expect(result.nextLastSaleReinvestment).toBe(200);
+    expect(result.saleReinvestment).toBe(100);
+    expect(result.investedFromSales).toBe(100);
+    expect(result.nextLastSaleReinvestment).toBe(100);
   });
 
   it("doubles incremental reinvestment and halves until it fits available sale cash", () => {
@@ -167,7 +167,7 @@ describe("WeeklyInvestmentPolicy", () => {
       depositCash: 0,
       saleCash: 500,
       minDeposit: 1000,
-      minInvestment: 200,
+      minInvestment: 100,
       reinvest: true,
       incremental: true,
       lastSaleReinvestment: 400,
@@ -185,9 +185,9 @@ describe("WeeklyInvestmentPolicy", () => {
     const result = policy.decide({
       buyCount: 1,
       depositCash: 0,
-      saleCash: 199,
+      saleCash: 50,
       minDeposit: 1000,
-      minInvestment: 200,
+      minInvestment: 100,
       reinvest: true,
       incremental: true,
       lastSaleReinvestment: 200,

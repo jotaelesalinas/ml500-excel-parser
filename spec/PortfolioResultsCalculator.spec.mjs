@@ -44,17 +44,17 @@ describe("PortfolioResultsCalculator", () => {
       XIRR: 12.34,
       avg_age_y: 1.23,
       deposited: 1000,
-      current: 1026.67,
-      invested: 226.67,
-      depositCash: 800,
+      current: 1013.33,
+      invested: 113.33,
+      depositCash: 900,
       saleCash: 0,
-      cash: 800,
-      returns: 2.67,
+      cash: 900,
+      returns: 1.33,
     });
     const diffRow = result.log.find((row) => row.action === "Diff AAPL");
     expect(diffRow).toBeDefined();
     expect(diffRow.qty).toBeNull();
-    expect(diffRow.amount).toBe(26.67);
+    expect(diffRow.amount).toBe(13.33);
     expect(result.log.some((row) => row.action.startsWith("Current "))).toBeFalse();
     expect(xirrCalculator.calculate).toHaveBeenCalledTimes(3);
     expect(weightedAgeCalculator.calculate).toHaveBeenCalledTimes(3);
@@ -132,14 +132,14 @@ describe("PortfolioResultsCalculator", () => {
       weightedAgeCalculator: { calculate: () => 1 },
       logger: { warn: jasmine.createSpy("warn") },
       minDeposit: 1000,
-      minInvestment: 200,
+      minInvestment: 100,
       todayProvider: () => "2026-01-02",
     });
 
     const result = byStrat(calculator.calculate(
       [{ name: "Tab Delegation", entries: [{ id: 1 }] }],
       [1],
-      { minDeposit: 1000, minInvestment: 200 },
+      { minDeposit: 1000, minInvestment: 100 },
     ), "Fixed");
 
     expect(weeklyInvestmentPolicy.decide).toHaveBeenCalledWith({
@@ -147,7 +147,7 @@ describe("PortfolioResultsCalculator", () => {
       depositCash: 0,
       saleCash: 0,
       minDeposit: 1000,
-      minInvestment: 200,
+      minInvestment: 100,
       reinvest: false,
       incremental: false,
       lastSaleReinvestment: 0,
@@ -157,7 +157,7 @@ describe("PortfolioResultsCalculator", () => {
       depositCash: 0,
       saleCash: 0,
       minDeposit: 1000,
-      minInvestment: 200,
+      minInvestment: 100,
       reinvest: true,
       incremental: false,
       lastSaleReinvestment: 0,
@@ -167,7 +167,7 @@ describe("PortfolioResultsCalculator", () => {
       depositCash: 0,
       saleCash: 0,
       minDeposit: 1000,
-      minInvestment: 200,
+      minInvestment: 100,
       reinvest: true,
       incremental: true,
       lastSaleReinvestment: 0,
@@ -177,7 +177,7 @@ describe("PortfolioResultsCalculator", () => {
       depositCash: 800,
       saleCash: 0,
       minDeposit: 1000,
-      minInvestment: 200,
+      minInvestment: 100,
       reinvest: false,
       incremental: false,
       lastSaleReinvestment: 0,
@@ -187,7 +187,7 @@ describe("PortfolioResultsCalculator", () => {
       depositCash: 800,
       saleCash: 0,
       minDeposit: 1000,
-      minInvestment: 200,
+      minInvestment: 100,
       reinvest: true,
       incremental: false,
       lastSaleReinvestment: 0,
@@ -197,7 +197,7 @@ describe("PortfolioResultsCalculator", () => {
       depositCash: 800,
       saleCash: 0,
       minDeposit: 1000,
-      minInvestment: 200,
+      minInvestment: 100,
       reinvest: true,
       incremental: true,
       lastSaleReinvestment: 0,
@@ -228,7 +228,7 @@ describe("PortfolioResultsCalculator", () => {
       weightedAgeCalculator: { calculate: () => 1 },
       logger: { warn: jasmine.createSpy("warn") },
       minDeposit: 1000,
-      minInvestment: 200,
+      minInvestment: 100,
       todayProvider: () => "2026-01-04",
     });
 
@@ -267,7 +267,7 @@ describe("PortfolioResultsCalculator", () => {
       weightedAgeCalculator,
       logger: { warn: jasmine.createSpy("warn") },
       minDeposit: 1000,
-      minInvestment: 200,
+      minInvestment: 100,
       todayProvider: () => "2026-01-10",
     });
 
@@ -306,7 +306,7 @@ describe("PortfolioResultsCalculator", () => {
       weightedAgeCalculator: { calculate: () => 1 },
       logger: { warn: jasmine.createSpy("warn") },
       minDeposit: 1000,
-      minInvestment: 200,
+      minInvestment: 100,
       todayProvider: () => "2026-01-02",
     });
 
@@ -332,7 +332,7 @@ describe("PortfolioResultsCalculator", () => {
       weightedAgeCalculator: { calculate: jasmine.createSpy("calculate") },
       logger,
       minDeposit: 1000,
-      minInvestment: 200,
+      minInvestment: 100,
       todayProvider: () => "2026-01-02",
     });
 
@@ -461,7 +461,7 @@ describe("PortfolioResultsCalculator", () => {
       weightedAgeCalculator: { calculate: () => 1 },
       logger: { warn: jasmine.createSpy("warn") },
       minDeposit: 1000,
-      minInvestment: 200,
+      minInvestment: 100,
       todayProvider: () => "2026-01-02",
     });
 

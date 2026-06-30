@@ -36,14 +36,14 @@ describe("BulkFormInputParser", () => {
   it("parses optional strategy lines", () => {
     const parser = new BulkFormInputParser();
 
-    const parsed = parser.parse("url\nkey\n5\n1000\n200\ntrue\nyes");
+    const parsed = parser.parse("url\nkey\n5\n1000\n100\ntrue\nyes");
 
     expect(parsed).toEqual({
       spreadsheetUrl: "url",
       apiKey: "key",
       firstN: "5",
       minDeposit: "1000",
-      minInvestment: "200",
+      minInvestment: "100",
       reinvest: true,
       incremental: true,
     });

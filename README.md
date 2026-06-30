@@ -61,7 +61,7 @@ Your API key is never stored — it only lives in the browser page while you use
 - Enter the API key
 - Enter one or more Top N values, comma-separated (e.g. `4, 10, 20`)
 - Enter **Minimum deposit** (default `1000`)
-- Enter **Minimum investment** (default `200`)
+- Enter **Minimum investment** (default `100`)
 
 **Bulk input** (right textarea): paste lines in order — URL, API key, Top N values, minimum deposit, minimum investment. The fields on the left will be filled automatically when you click Calculate.
 
