@@ -47,10 +47,20 @@ export function bootstrap(documentRef = document) {
     firstNElement: documentRef.getElementById("first-n"),
     minDepositElement: documentRef.getElementById("min-deposit"),
     minInvestmentElement: documentRef.getElementById("min-investment"),
+    smoothNElement: documentRef.getElementById("smooth-n"),
     bulkInputElement: documentRef.getElementById("bulk-input"),
     bulkFormInputParser: new BulkFormInputParser(),
   });
 
   controller.bind();
+
+  const strategyToggles = documentRef.querySelectorAll(".strategy-toggle-input");
+  const syncStrategyFilter = () => {
+    const checked = [...strategyToggles].filter((el) => el.checked).map((el) => el.value);
+    const allChecked = checked.length === strategyToggles.length;
+    controller.resultsTableView.setStrategyFilter(allChecked ? null : new Set(checked));
+  };
+  strategyToggles.forEach((toggle) => toggle.addEventListener("change", syncStrategyFilter));
+
   return controller;
 }

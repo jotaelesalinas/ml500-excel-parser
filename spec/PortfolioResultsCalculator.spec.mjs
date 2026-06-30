@@ -33,14 +33,19 @@ describe("PortfolioResultsCalculator", () => {
       [4],
     );
 
-    expect(results.length).toBe(3);
-    expect(results.map((entry) => entry.strat)).toEqual(["Fixed", "Reinv", "Incr"]);
+    expect(results.length).toBe(10);
+    expect(results.map((entry) => entry.strat)).toEqual([
+      "Fixed D", "Fixed S|D", "Full S", "Fixed D + Full S",
+      "Smooth S", "Fixed D + Smooth S",
+      "Half S", "Fixed D + Half S",
+      "Doubling S", "Fixed D + Doubling S",
+    ]);
 
-    const result = byStrat(results, "Fixed");
+    const result = byStrat(results, "Fixed D");
     expect(result).toEqual({
       top_n: 4,
       tab: "Tab A",
-      strat: "Fixed",
+      strat: "Fixed D",
       XIRR: 12.34,
       avg_age_y: 1.23,
       deposited: 1000,
@@ -56,8 +61,8 @@ describe("PortfolioResultsCalculator", () => {
     expect(diffRow.qty).toBeNull();
     expect(diffRow.amount).toBe(13.33);
     expect(result.log.some((row) => row.action.startsWith("Current "))).toBeFalse();
-    expect(xirrCalculator.calculate).toHaveBeenCalledTimes(3);
-    expect(weightedAgeCalculator.calculate).toHaveBeenCalledTimes(3);
+    expect(xirrCalculator.calculate).toHaveBeenCalledTimes(10);
+    expect(weightedAgeCalculator.calculate).toHaveBeenCalledTimes(10);
   });
 
   it("sets XIRR to N/A when xirr calculation fails", () => {
@@ -78,7 +83,7 @@ describe("PortfolioResultsCalculator", () => {
 
     const result = byStrat(
       calculator.calculate([{ name: "Tab A", entries: [{}] }], [1]),
-      "Fixed",
+      "Fixed D",
     );
 
     expect(result.XIRR).toBe("N/A");
@@ -140,27 +145,20 @@ describe("PortfolioResultsCalculator", () => {
       [{ name: "Tab Delegation", entries: [{ id: 1 }] }],
       [1],
       { minDeposit: 1000, minInvestment: 100 },
-    ), "Fixed");
+    ), "Fixed D");
 
+    // Verify the new strategy-based call signature for two representative strategies
     expect(weeklyInvestmentPolicy.decide).toHaveBeenCalledWith({
       buyCount: 1,
       depositCash: 0,
       saleCash: 0,
       minDeposit: 1000,
       minInvestment: 100,
-      reinvest: false,
-      incremental: false,
+      strategy: "Fixed D",
+      smoothN: 4,
       lastSaleReinvestment: 0,
-    });
-    expect(weeklyInvestmentPolicy.decide).toHaveBeenCalledWith({
-      buyCount: 1,
-      depositCash: 0,
-      saleCash: 0,
-      minDeposit: 1000,
-      minInvestment: 100,
-      reinvest: true,
-      incremental: false,
-      lastSaleReinvestment: 0,
+      smoothBand: 0,
+      smoothWeeksRemaining: 0,
     });
     expect(weeklyInvestmentPolicy.decide).toHaveBeenCalledWith({
       buyCount: 1,
@@ -168,39 +166,11 @@ describe("PortfolioResultsCalculator", () => {
       saleCash: 0,
       minDeposit: 1000,
       minInvestment: 100,
-      reinvest: true,
-      incremental: true,
+      strategy: "Doubling S",
+      smoothN: 4,
       lastSaleReinvestment: 0,
-    });
-    expect(weeklyInvestmentPolicy.decide).toHaveBeenCalledWith({
-      buyCount: 0,
-      depositCash: 800,
-      saleCash: 0,
-      minDeposit: 1000,
-      minInvestment: 100,
-      reinvest: false,
-      incremental: false,
-      lastSaleReinvestment: 0,
-    });
-    expect(weeklyInvestmentPolicy.decide).toHaveBeenCalledWith({
-      buyCount: 0,
-      depositCash: 800,
-      saleCash: 0,
-      minDeposit: 1000,
-      minInvestment: 100,
-      reinvest: true,
-      incremental: false,
-      lastSaleReinvestment: 0,
-    });
-    expect(weeklyInvestmentPolicy.decide).toHaveBeenCalledWith({
-      buyCount: 0,
-      depositCash: 800,
-      saleCash: 0,
-      minDeposit: 1000,
-      minInvestment: 100,
-      reinvest: true,
-      incremental: true,
-      lastSaleReinvestment: 0,
+      smoothBand: 0,
+      smoothWeeksRemaining: 0,
     });
     expect(result.deposited).toBe(1000);
     expect(result.invested).toBe(240);
@@ -236,7 +206,7 @@ describe("PortfolioResultsCalculator", () => {
       [{ name: "Tab A", entries: [{ id: 1 }, { id: 2 }] }],
       [2],
       { minDeposit: 1000, minInvestment: 200 },
-    ), "Reinv");
+    ), "Fixed D + Full S");
 
     expect(result.cash).toBe(660);
     expect(result.invested).toBe(440);
@@ -275,7 +245,7 @@ describe("PortfolioResultsCalculator", () => {
       [{ name: "Tab A", entries: [{ id: 1 }, { id: 2 }] }],
       [5],
       { minDeposit: 1000, minInvestment: 200 },
-    ), "Fixed");
+    ), "Fixed D");
 
     expect(result.deposited).toBe(1000);
     expect(result.cash).toBe(920);
@@ -314,7 +284,7 @@ describe("PortfolioResultsCalculator", () => {
       [{ name: "Tab A", entries: [{ id: 1 }, { id: 2 }, { id: 3 }] }],
       [10],
       { minDeposit: 1000, minInvestment: 200 },
-    ), "Fixed");
+    ), "Fixed D");
 
     expect(result.deposited).toBe(1000);
     expect(result.invested).toBe(198);
@@ -336,12 +306,12 @@ describe("PortfolioResultsCalculator", () => {
       todayProvider: () => "2026-01-02",
     });
 
-    const result = byStrat(calculator.calculate([{ name: "Empty Tab", entries: [] }], [4]), "Fixed");
+    const result = byStrat(calculator.calculate([{ name: "Empty Tab", entries: [] }], [4]), "Fixed D");
 
     expect(result).toEqual({
       top_n: 4,
       tab: "Empty Tab",
-      strat: "Fixed",
+      strat: "Fixed D",
       XIRR: "N/A",
       avg_age_y: 0,
       deposited: 0,
@@ -378,7 +348,7 @@ describe("PortfolioResultsCalculator", () => {
       [{ name: "Tab A", entries: [{ id: 1, ticker: "AAA" }, { id: 2, ticker: "BBB" }] }],
       [2],
       { minDeposit: 300, minInvestment: 1000 },
-    ), "Fixed");
+    ), "Fixed D");
 
     expect(result.deposited).toBe(1200);
     expect(result.invested).toBe(1200);
@@ -426,7 +396,7 @@ describe("PortfolioResultsCalculator", () => {
       [{ name: "Tab B", entries: [{ id: 1 }, { id: 2 }] }],
       [9],
       { minDeposit: 1000, minInvestment: 900 },
-    ), "Fixed");
+    ), "Fixed D");
 
     expect(result.top_n).toBe(9);
     expect(result.tab).toBe("Tab B");
@@ -469,7 +439,7 @@ describe("PortfolioResultsCalculator", () => {
       [{ name: "Tab C", entries: [{ id: 1 }] }],
       [1],
       { minDeposit: 1000, minInvestment: 200 },
-    ), "Reinv");
+    ), "Fixed D + Full S");
 
     expect(result.deposited).toBe(1000);
     expect(result.cash).toBe(1200);

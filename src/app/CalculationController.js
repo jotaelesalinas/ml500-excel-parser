@@ -12,6 +12,7 @@ export class CalculationController {
     firstNElement,
     minDepositElement,
     minInvestmentElement,
+    smoothNElement,
     bulkInputElement,
     bulkFormInputParser,
     logger = console,
@@ -28,6 +29,7 @@ export class CalculationController {
     this.firstNElement = firstNElement;
     this.minDepositElement = minDepositElement;
     this.minInvestmentElement = minInvestmentElement;
+    this.smoothNElement = smoothNElement;
     this.bulkInputElement = bulkInputElement;
     this.bulkFormInputParser = bulkFormInputParser;
     this.logger = logger;
@@ -259,9 +261,18 @@ export class CalculationController {
       return null;
     }
 
+    const smoothN = this.#parsePositiveNumber(
+      this.smoothNElement?.value,
+      "Please enter a valid Smooth N value greater than 0.",
+    );
+    if (smoothN == null) {
+      return null;
+    }
+
     return {
       minDeposit,
       minInvestment,
+      smoothN,
     };
   }
 

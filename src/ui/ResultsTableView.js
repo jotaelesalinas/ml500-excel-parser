@@ -2,6 +2,8 @@ export class ResultsTableView {
   constructor(containerElement) {
     this.containerElement = containerElement;
     this.results = [];
+    this.allResults = [];
+    this.visibleStrategies = null;
     this.selectedResultKey = null;
     this.sortState = {
       field: null,
@@ -12,15 +14,31 @@ export class ResultsTableView {
     this.nextResultId = 0;
   }
 
+  setStrategyFilter(strategySet) {
+    this.visibleStrategies = strategySet;
+    if (this.allResults.length > 0) {
+      this.render(this.allResults);
+    }
+  }
+
   render(results) {
-    if (results.length === 0) {
-      this.containerElement.innerHTML = "<p>No results.</p>";
+    this.allResults = results;
+    const filteredResults = this.visibleStrategies
+      ? results.filter((r) => this.visibleStrategies.has(r.strat))
+      : results;
+
+    if (filteredResults.length === 0) {
       this.results = [];
-      this.selectedResultKey = null;
+      this.containerElement.innerHTML = results.length === 0
+        ? "<p>No results.</p>"
+        : "<p>No results for the selected strategies.</p>";
+      if (results.length === 0) {
+        this.selectedResultKey = null;
+      }
       return;
     }
 
-    const sortedResults = this.#sortResults(results);
+    const sortedResults = this.#sortResults(filteredResults);
     this.results = sortedResults;
     const selectedResult = this.#getSelectedResult(sortedResults);
     const columns = [
@@ -223,7 +241,7 @@ export class ResultsTableView {
       this.sortState.direction = "asc";
     }
     this.sortState.hasSorted = true;
-    this.render(this.results);
+    this.render(this.allResults);
   }
 
   #buildLogTable(result) {

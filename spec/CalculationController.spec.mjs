@@ -37,6 +37,7 @@ describe("CalculationController", () => {
       firstNElement: { value: "4, 10" },
       minDepositElement: { value: "1000" },
       minInvestmentElement: { value: "100" },
+      smoothNElement: { value: "4" },
       bulkInputElement: { value: "" },
       bulkFormInputParser: {
         parse: jasmine.createSpy("parse").and.returnValue({
@@ -106,7 +107,7 @@ describe("CalculationController", () => {
     expect(deps.portfolioResultsCalculator.calculate).toHaveBeenCalledWith(
       [{ name: "Tab", entries: [] }],
       [4, 10],
-      { minDeposit: 1000, minInvestment: 100 },
+      { minDeposit: 1000, minInvestment: 100, smoothN: 4 },
     );
     expect(deps.statusView.clear).toHaveBeenCalled();
     expect(deps.resultsTableView.clearSelection).toHaveBeenCalled();
@@ -157,7 +158,7 @@ describe("CalculationController", () => {
     expect(deps.portfolioResultsCalculator.calculate).toHaveBeenCalledWith(
       [{ name: "Tab", entries: [] }],
       [3, 8],
-      { minDeposit: 1500, minInvestment: 250 },
+      { minDeposit: 1500, minInvestment: 250, smoothN: 4 },
     );
   });
 

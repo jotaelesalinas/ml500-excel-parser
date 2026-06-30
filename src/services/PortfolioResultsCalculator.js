@@ -27,16 +27,24 @@ export class PortfolioResultsCalculator {
   calculate(tabs, firstNValues, strategy = {}) {
     const configuredMinDeposit = this.#toPositiveAmount(strategy.minDeposit, this.minDeposit);
     const configuredMinInvestment = this.#toPositiveAmount(strategy.minInvestment, this.minInvestment);
+    const configuredSmoothN = this.#toPositiveAmount(strategy.smoothN, 4);
     const strategyVariants = [
-      { strat: "Fixed", reinvest: false, incremental: false },
-      { strat: "Reinv", reinvest: true, incremental: false },
-      { strat: "Incr", reinvest: true, incremental: true },
+      { strat: "Fixed D" },
+      { strat: "Fixed S|D" },
+      { strat: "Full S" },
+      { strat: "Fixed D + Full S" },
+      { strat: "Smooth S" },
+      { strat: "Fixed D + Smooth S" },
+      { strat: "Half S" },
+      { strat: "Fixed D + Half S" },
+      { strat: "Doubling S" },
+      { strat: "Fixed D + Doubling S" },
     ];
     const results = [];
 
     for (const firstN of firstNValues) {
       tabs.forEach((tabData) => {
-        strategyVariants.forEach(({ strat, reinvest, incremental }) => {
+        strategyVariants.forEach(({ strat }) => {
           const tabName = tabData.name;
           const entries = this.firstNFilter.filter(tabData.entries, firstN);
           const movements = entries.flatMap((entry) => this.movementMapper.map(entry));
@@ -51,6 +59,8 @@ export class PortfolioResultsCalculator {
           let depositCash = 0;
           let saleCash = 0;
           let lastSaleReinvestment = 0;
+          let smoothBand = 0;
+          let smoothWeeksRemaining = 0;
           let valueToday = 0;
           let trackedDeposited = 0;
           let trackedInvested = 0;
@@ -85,9 +95,11 @@ export class PortfolioResultsCalculator {
               saleCash,
               minDeposit: configuredMinDeposit,
               minInvestment: configuredMinInvestment,
-              reinvest,
-              incremental,
+              strategy: strat,
+              smoothN: configuredSmoothN,
               lastSaleReinvestment,
+              smoothBand,
+              smoothWeeksRemaining,
             });
             if (allocation.depositTopUp > 0) {
               moneyIn.push({ date, amount: allocation.depositTopUp });
@@ -137,6 +149,8 @@ export class PortfolioResultsCalculator {
             depositCash = +allocation.nextDepositCash.toFixed(2);
             saleCash = +allocation.nextSaleCash.toFixed(2);
             lastSaleReinvestment = Math.floor(allocation.nextLastSaleReinvestment || 0);
+            smoothBand = allocation.nextSmoothBand ?? 0;
+            smoothWeeksRemaining = allocation.nextSmoothWeeksRemaining ?? 0;
 
             const sellMovements = movements.filter(
               (movement) => movement.date === date && movement.action === "sell",

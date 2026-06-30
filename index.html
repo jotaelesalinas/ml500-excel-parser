@@ -53,16 +53,67 @@
                             <label for="min-deposit" class="form-label">Minimum deposit</label>
                             <input type="number" id="min-deposit" class="form-control" value="1000" min="1" step="1">
                         </div>
-                        <div class="mb-0">
+                        <div class="mb-3">
                             <label for="min-investment" class="form-label">Minimum investment</label>
                             <input type="number" id="min-investment" class="form-control" value="100" min="1" step="1">
+                        </div>
+                        <div class="mb-0">
+                            <label for="smooth-n" class="form-label">Smooth weeks (N)</label>
+                            <input type="number" id="smooth-n" class="form-control" value="4" min="2" step="1">
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="strategy-notes">
-                            <p><strong>Fixed:</strong> invests only the weekly minimum from deposits; sale proceeds remain as cash.</p>
-                            <p><strong>Reinv:</strong> keeps the weekly minimum investment and also reinvests sales in multiples of the minimum investment.</p>
-                            <p><strong>Incr:</strong> same as Reinv, but sale reinvestment follows the recent incremental memory behavior.</p>
+                            <label class="strategy-toggle">
+                                <input type="checkbox" class="strategy-toggle-input" value="Fixed D" checked>
+                                <span class="strategy-toggle-badge">Fixed D</span>
+                                <span>invests only the weekly minimum from deposits; sale proceeds remain as cash.</span>
+                            </label>
+                            <label class="strategy-toggle">
+                                <input type="checkbox" class="strategy-toggle-input" value="Fixed S|D" checked>
+                                <span class="strategy-toggle-badge">Fixed S|D</span>
+                                <span>invests only the weekly minimum, from sale proceeds if there is enough cash, else from deposits.</span>
+                            </label>
+                            <label class="strategy-toggle">
+                                <input type="checkbox" class="strategy-toggle-input" value="Full S" checked>
+                                <span class="strategy-toggle-badge">Full S</span>
+                                <span>if there is enough in sale proceeds, reinvests all of them in multiples of the minimum investment, else invests the minimum from deposits.</span>
+                            </label>
+                            <label class="strategy-toggle">
+                                <input type="checkbox" class="strategy-toggle-input" value="Fixed D + Full S" checked>
+                                <span class="strategy-toggle-badge">Fixed D + Full S</span>
+                                <span>always invests the weekly minimum from deposits and also reinvests all sale proceeds.</span>
+                            </label>
+                            <label class="strategy-toggle">
+                                <input type="checkbox" class="strategy-toggle-input" value="Smooth S" checked>
+                                <span class="strategy-toggle-badge">Smooth S</span>
+                                <span>if sale proceeds reach the next band threshold (N × min), spreads reinvestment evenly over N weeks, else invests the minimum from deposits.</span>
+                            </label>
+                            <label class="strategy-toggle">
+                                <input type="checkbox" class="strategy-toggle-input" value="Fixed D + Smooth S" checked>
+                                <span class="strategy-toggle-badge">Fixed D + Smooth S</span>
+                                <span>always invests the weekly minimum from deposits and also applies the smooth reinvestment from sale proceeds.</span>
+                            </label>
+                            <label class="strategy-toggle">
+                                <input type="checkbox" class="strategy-toggle-input" value="Half S" checked>
+                                <span class="strategy-toggle-badge">Half S</span>
+                                <span>if 50 % of sale proceeds is at least the minimum investment, reinvests that half, else invests the minimum from deposits.</span>
+                            </label>
+                            <label class="strategy-toggle">
+                                <input type="checkbox" class="strategy-toggle-input" value="Fixed D + Half S" checked>
+                                <span class="strategy-toggle-badge">Fixed D + Half S</span>
+                                <span>always invests the weekly minimum from deposits and also reinvests 50 % of sale proceeds.</span>
+                            </label>
+                            <label class="strategy-toggle">
+                                <input type="checkbox" class="strategy-toggle-input" value="Doubling S" checked>
+                                <span class="strategy-toggle-badge">Doubling S</span>
+                                <span>if there is enough in sale proceeds, reinvests them following a doubling memory behavior, else invests the minimum from deposits.</span>
+                            </label>
+                            <label class="strategy-toggle">
+                                <input type="checkbox" class="strategy-toggle-input" value="Fixed D + Doubling S" checked>
+                                <span class="strategy-toggle-badge">Fixed D + Doubling S</span>
+                                <span>always invests the weekly minimum from deposits and also applies the doubling reinvestment from sale proceeds.</span>
+                            </label>
                         </div>
                     </div>
                 </div>
