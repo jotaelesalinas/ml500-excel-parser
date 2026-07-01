@@ -41,55 +41,99 @@ export class ResultsTableView {
     const sortedResults = this.#sortResults(filteredResults);
     this.results = sortedResults;
     const selectedResult = this.#getSelectedResult(sortedResults);
+
     const columns = [
-      { field: "top_n", label: "Top N", numeric: true },
-      { field: "tab", label: "Tab", numeric: false },
-      { field: "strat", label: "Strat", numeric: false },
-      { field: "deposited", label: "Deposited", numeric: true },
-      { field: "current", label: "Current", numeric: true },
-      { field: "invested", label: "Invested", numeric: true },
-      { field: "depositCash", label: "Deposit $$", numeric: true },
-      { field: "saleCash", label: "Sale $$", numeric: true },
-      { field: "pl", label: "P/L", numeric: true },
-      { field: "returns", label: "P/L %", numeric: true },
-      { field: "avg_age_y", label: "Age (Y)", numeric: true },
-      { field: "XIRR", label: "XIRR", numeric: true },
+      { field: "top_n", label: "Top N", numeric: true, group: "id" },
+      { field: "tab", label: "Tab", numeric: false, group: "id" },
+      { field: "strat", label: "Strategy", numeric: false, group: "id" },
+      { field: "deposited", label: "Deposited", numeric: true, group: "portfolio" },
+      { field: "current", label: "Current", numeric: true, group: "portfolio" },
+      { field: "invested", label: "Invested", numeric: true, group: "breakdown", dot: "invested" },
+      { field: "depositCash", label: "Deposits", numeric: true, group: "breakdown", dot: "deposits" },
+      { field: "saleCash", label: "Sales", numeric: true, group: "breakdown", dot: "sales" },
+      { field: "pl", label: "P/L", numeric: true, group: "performance" },
+      { field: "returns", label: "P/L %", numeric: true, group: "performance" },
+      { field: "avg_age_y", label: "Age", numeric: true, group: "performance" },
+      { field: "XIRR", label: "XIRR", numeric: true, group: "performance" },
     ];
 
-    const headerCells = columns.map((column) => {
+    // --- Summary boxes (Min · Avg · Max) ---
+    let summaryHtml = this.#buildSummaryBoxes(sortedResults);
+
+    // --- Group header row ---
+    const groups = [
+      { key: "id", colspan: 3, label: "", cls: "group-spacer" },
+      { key: "portfolio", colspan: 2, label: "Portfolio", cls: "group-header" },
+      { key: "breakdown", colspan: 3, label: "Current breakdown", cls: "group-header group-header-accent" },
+      { key: "performance", colspan: 4, label: "Performance", cls: "group-header" },
+    ];
+    const groupHeaderRow = groups.map((g) =>
+      `<th colspan="${g.colspan}" class="${g.cls}">${g.label}</th>`
+    ).join("");
+
+    // --- Column header row ---
+    const headerCells = columns.map((column, i) => {
       const isActiveSort = this.sortState.hasSorted && this.sortState.field === column.field;
       const classes = ["result-sort-header"];
-      if (column.numeric) {
-        classes.push("num");
-      }
-      if (isActiveSort) {
-        classes.push(`is-sorted-${this.sortState.direction}`);
-      }
+      if (column.numeric) classes.push("num");
+      if (isActiveSort) classes.push(`is-sorted-${this.sortState.direction}`);
+      // Add left-border for first column of each group (except id)
+      const isFirstOfGroup = i === 0 || columns[i - 1].group !== column.group;
+      if (isFirstOfGroup && column.group !== "id") classes.push("col-border-left");
+
       const ariaSortValue = isActiveSort
         ? (this.sortState.direction === "asc" ? "ascending" : "descending")
         : "none";
-      return `<th class="${classes.join(" ")}" data-sort-field="${column.field}" tabindex="0" role="button" aria-sort="${ariaSortValue}">${column.label}</th>`;
+
+      let dotHtml = "";
+      if (column.dot) {
+        dotHtml = `<span class="col-dot col-dot-${column.dot}"></span>`;
+      }
+
+      return `<th class="${classes.join(" ")}" data-sort-field="${column.field}" tabindex="0" role="button" aria-sort="${ariaSortValue}">${dotHtml}${column.label}</th>`;
     }).join("");
 
-    let html = `<table class="results-table${this.sortState.hasSorted ? " is-user-sorted" : ""}">
-        <thead><tr>${headerCells}</tr></thead><tbody>`;
+    let html = summaryHtml;
+    html += `<table class="results-table${this.sortState.hasSorted ? " is-user-sorted" : ""}">
+        <thead><tr>${groupHeaderRow}</tr><tr>${headerCells}</tr></thead><tbody>`;
 
     sortedResults.forEach((result) => {
       const rowKey = this.#buildResultKey(result);
       const pl = Number(result.current) - Number(result.deposited);
+      const plPct = Number(result.returns);
+      const xirr = result.XIRR;
+      const plClass = pl >= 0 ? "val-positive" : "val-negative";
+
+      // Composition bar percentages
+      const cur = Number(result.current);
+      const inv = Number(result.invested) || 0;
+      const depC = Number(result.depositCash) || 0;
+      const salC = Number(result.saleCash) || 0;
+      const total = inv + depC + salC || 1;
+      const pctInv = ((inv / total) * 100).toFixed(1);
+      const pctDep = ((depC / total) * 100).toFixed(1);
+      const pctSal = ((salC / total) * 100).toFixed(1);
+
       html += `<tr>
-            <td class="num">${result.top_n}</td>
+            <td class="num mono">${result.top_n}</td>
             <td><a href="#" class="tab-log-link" data-result-key="${this.#escapeHtml(rowKey)}">${this.#escapeHtml(result.tab)}</a></td>
-            <td>${this.#escapeHtml(result.strat || "")}</td>
-            <td class="num">${result.deposited.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-            <td class="num">${result.current.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-            <td class="num">${result.invested.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-            <td class="num">${this.#formatAmount(result.depositCash)}</td>
-            <td class="num">${this.#formatAmount(result.saleCash)}</td>
-            <td class="num">${this.#formatAmount(pl)}</td>
-            <td class="num">${Number(result.returns).toFixed(2)} %</td>
-            <td class="num">${result.avg_age_y}</td>
-            <td class="num">${result.XIRR === "N/A" ? "N/A" : `${Number(result.XIRR).toFixed(2)} %`}</td>
+            <td class="mono" style="font-size:0.6875rem;">${this.#escapeHtml(result.strat || "")}</td>
+            <td class="num mono col-border-left val-muted">${result.deposited.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+            <td class="num mono val-heading">
+              ${result.current.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              <div class="comp-bar">
+                <div class="comp-bar-inv" style="width:${pctInv}%"></div>
+                <div class="comp-bar-dep" style="width:${pctDep}%"></div>
+                <div class="comp-bar-sale" style="width:${pctSal}%"></div>
+              </div>
+            </td>
+            <td class="num mono col-border-left">${result.invested.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+            <td class="num mono val-muted">${this.#formatAmount(result.depositCash)}</td>
+            <td class="num mono val-muted">${this.#formatAmount(result.saleCash)}</td>
+            <td class="num mono col-border-left ${plClass}" style="font-weight:600;">${this.#formatAmount(pl)}</td>
+            <td class="num mono ${plClass}">${plPct.toFixed(2)} %</td>
+            <td class="num mono val-muted">${result.avg_age_y}</td>
+            <td class="num mono ${plClass}">${xirr === "N/A" ? "N/A" : `${Number(xirr).toFixed(2)} %`}</td>
         </tr>`;
     });
 
@@ -102,6 +146,39 @@ export class ResultsTableView {
 
   clearSelection() {
     this.selectedResultKey = null;
+  }
+
+  // --- Summary boxes ---
+  #buildSummaryBoxes(results) {
+    if (results.length === 0) return "";
+
+    const metrics = [
+      { name: "P/L %", get: (r) => Number(r.returns), pct: true },
+      { name: "Age", get: (r) => Number(r.avg_age_y), pct: false, dec: 1 },
+      { name: "XIRR", get: (r) => { const v = Number(r.XIRR); return Number.isFinite(v) ? v : null; }, pct: true },
+    ];
+
+    const idOf = (r) => `${this.#escapeHtml(r.tab)} · ${this.#escapeHtml(r.strat || "")} · Top ${r.top_n}`;
+
+    const boxes = metrics.map((m) => {
+      const vals = results.map(m.get).filter((v) => v != null && Number.isFinite(v));
+      if (vals.length === 0) return "";
+      const min = Math.min(...vals);
+      const max = Math.max(...vals);
+      const avg = vals.reduce((a, v) => a + v, 0) / vals.length;
+      const maxRow = results.find((r) => m.get(r) === max);
+      const fmt = (n) => {
+        if (m.pct) return (n >= 0 ? "+" : "\u2212") + Math.abs(n).toFixed(2) + "%";
+        return n.toFixed(m.dec ?? 2);
+      };
+      return `<div class="summary-box">
+        <div class="summary-box-label">Min · Avg · Max ${m.name}</div>
+        <div class="summary-box-values">${fmt(min)} · ${fmt(avg)} · ${fmt(max)}</div>
+        <div class="summary-box-id">Max: ${maxRow ? idOf(maxRow) : "—"}</div>
+      </div>`;
+    }).join("");
+
+    return `<div class="summary-boxes">${boxes}</div>`;
   }
 
   #getSelectedResult(results) {
@@ -269,7 +346,7 @@ export class ResultsTableView {
         <thead><tr>
           <th>Date</th><th>Action</th><th>Qty</th><th>Amount</th>
           <th>Deposited</th><th>Current</th><th>Invested</th>
-          <th>Deposit $$</th><th>Sale $$</th><th>P/L</th><th>P/L %</th>
+          <th>Deposits</th><th>Sales</th><th>P/L</th><th>P/L %</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>

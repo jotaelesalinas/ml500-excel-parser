@@ -35,9 +35,9 @@ describe("ResultsTableView", () => {
     expect(container.innerHTML).toContain('class="tab-log-link"');
     expect(container.innerHTML).toContain("Current");
     expect(container.innerHTML).toContain("P/L %");
-    expect(container.innerHTML).toContain("Age (Y)");
-    expect(container.innerHTML).toContain("Deposit $$");
-    expect(container.innerHTML).toContain("Sale $$");
+    expect(container.innerHTML).toContain("Age");
+    expect(container.innerHTML).toContain("Deposits");
+    expect(container.innerHTML).toContain("Sales");
     expect(container.innerHTML).toContain("12.34 %");
   });
 
@@ -82,8 +82,8 @@ describe("ResultsTableView", () => {
     expect(container.innerHTML).toContain("Action Log");
     expect(container.innerHTML).toContain("<th>Date</th>");
     expect(container.innerHTML).toContain("Deposit");
-    expect(container.innerHTML).toContain("<th>Deposit $$</th>");
-    expect(container.innerHTML).toContain("<th>Sale $$</th>");
+    expect(container.innerHTML).toContain("<th>Deposits</th>");
+    expect(container.innerHTML).toContain("<th>Sales</th>");
     expect(container.innerHTML).toContain("<th>P/L</th>");
     expect(container.innerHTML).toContain("<th>P/L %</th>");
   });

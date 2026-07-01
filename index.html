@@ -3,122 +3,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ML500 Excel Parser</title>
+    <title>ML500 Backtester</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="app-shell py-4 py-md-5">
         <header class="mb-4">
-            <h1 class="app-title h2 mb-1">ML500 Excel Parser</h1>
-            <p class="text-secondary small mb-0">Load a Google Sheet, calculate top-N performance and inspect the action log.</p>
+            <h1 class="app-title mb-1">ML500 Backtester</h1>
+            <p class="text-secondary small mb-0" style="color: var(--warm-muted) !important;">Load a Google Sheet, calculate top-N performance and inspect the action log.</p>
         </header>
 
         <div class="d-flex flex-column gap-4">
             <section class="card-modern p-4">
-                <div class="row g-4">
-                    <div class="col-md-6">
-                        <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="step-number">01</span>
+                        <span class="step-label">Connect data</span>
+                    </div>
+                    <div class="input-mode-tabs">
+                        <button class="input-mode-tab active" data-mode="fields">Fields</button>
+                        <button class="input-mode-tab" data-mode="paste">Paste block</button>
+                    </div>
+                </div>
+                <div id="input-fields-mode">
+                    <div class="row g-4">
+                        <div class="col-md-6">
                             <label for="spreadsheet-url" class="form-label">Google Sheets URL</label>
                             <input type="text" id="spreadsheet-url" class="form-control" placeholder="https://docs.google.com/spreadsheets/d/...">
                         </div>
-                        <div class="mb-0">
+                        <div class="col-md-6">
                             <label for="api-key" class="form-label">Google API Key</label>
                             <input type="password" id="api-key" class="form-control" placeholder="AIza...">
-                            <div class="form-text">Needs Google Sheets API enabled. Not stored anywhere.</div>
+                            <div class="form-text">Requires Google Sheets API enabled. Not stored anywhere.</div>
                         </div>
                     </div>
-                    <div class="col-md-6 d-flex flex-column">
-                        <label for="bulk-input" class="form-label">Bulk input</label>
-                        <textarea id="bulk-input" class="form-control flex-grow-1" placeholder="Line 1: Google Sheets URL&#10;Line 2: Google API Key&#10;Line 3: First N values&#10;Line 4: Minimum deposit&#10;Line 5: Minimum investment"></textarea>
-                        <div class="form-text">If this textarea has content, its first non-empty trimmed lines populate the form before loading.</div>
-                    </div>
+                </div>
+                <div id="input-paste-mode" style="display: none;">
+                    <label for="bulk-input" class="form-label">Bulk input</label>
+                    <textarea id="bulk-input" class="form-control" placeholder="Line 1: Google Sheets URL&#10;Line 2: Google API Key&#10;Line 3: First N values&#10;Line 4: Minimum deposit&#10;Line 5: Minimum investment"></textarea>
+                    <div class="form-text">If this textarea has content, its first non-empty trimmed lines populate the form before loading.</div>
                 </div>
                 <div class="mt-4">
-                    <button id="btn-load-data" class="btn btn-primary">Load data</button>
+                    <button id="btn-load-data" class="btn-secondary-warm">Load data</button>
                 </div>
             </section>
 
             <section class="card-modern p-4">
+                <div class="d-flex align-items-center gap-3 mb-4">
+                    <span class="step-number">02</span>
+                    <span class="step-label">Configure &amp; run</span>
+                </div>
                 <div class="row g-4">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="first-n" class="form-label">First N values (comma-separated)</label>
-                            <input type="text" id="first-n" class="form-control" value="4, 10">
+                    <div class="col-md-5">
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <label for="first-n" class="form-label">First N</label>
+                                <input type="text" id="first-n" class="form-control" value="4, 10">
+                            </div>
+                            <div class="col-6">
+                                <label for="min-deposit" class="form-label">Min. deposit</label>
+                                <input type="number" id="min-deposit" class="form-control" value="1000" min="1" step="1">
+                            </div>
+                            <div class="col-6">
+                                <label for="min-investment" class="form-label">Min. investment</label>
+                                <input type="number" id="min-investment" class="form-control" value="100" min="1" step="1">
+                            </div>
+                            <div class="col-6">
+                                <label for="smooth-n" class="form-label">Smooth (N)</label>
+                                <input type="number" id="smooth-n" class="form-control" value="4" min="2" step="1">
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="min-deposit" class="form-label">Minimum deposit</label>
-                            <input type="number" id="min-deposit" class="form-control" value="1000" min="1" step="1">
-                        </div>
-                        <div class="mb-3">
-                            <label for="min-investment" class="form-label">Minimum investment</label>
-                            <input type="number" id="min-investment" class="form-control" value="100" min="1" step="1">
-                        </div>
-                        <div class="mb-0">
-                            <label for="smooth-n" class="form-label">Smooth weeks (N)</label>
-                            <input type="number" id="smooth-n" class="form-control" value="4" min="2" step="1">
-                        </div>
+                        <div class="summary-line" id="run-summary"></div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-7">
+                        <div class="strategy-header">
+                            <span class="strategy-title">Strategies</span>
+                            <span class="strategy-actions"><a id="btn-select-all">All</a> · <a id="btn-select-none">None</a></span>
+                        </div>
                         <div class="strategy-notes">
                             <label class="strategy-toggle">
                                 <input type="checkbox" class="strategy-toggle-input" value="Fixed D" checked>
-                                <span class="strategy-toggle-badge">Fixed D</span>
-                                <span>invests only the weekly minimum from deposits; sale proceeds remain as cash.</span>
+                                <span class="strategy-toggle-content">
+                                    <span class="strategy-toggle-badge">Fixed D</span>
+                                    <span class="strategy-toggle-desc">Only the weekly minimum from deposits; sales stay as cash.</span>
+                                </span>
+                                <span class="toggle-switch"></span>
                             </label>
                             <label class="strategy-toggle">
                                 <input type="checkbox" class="strategy-toggle-input" value="Fixed S|D" checked>
-                                <span class="strategy-toggle-badge">Fixed S|D</span>
-                                <span>invests only the weekly minimum, from sale proceeds if there is enough cash, else from deposits.</span>
+                                <span class="strategy-toggle-content">
+                                    <span class="strategy-toggle-badge">Fixed S|D</span>
+                                    <span class="strategy-toggle-desc">Weekly minimum from sale proceeds if enough, else from deposits.</span>
+                                </span>
+                                <span class="toggle-switch"></span>
                             </label>
                             <label class="strategy-toggle">
                                 <input type="checkbox" class="strategy-toggle-input" value="Full S" checked>
-                                <span class="strategy-toggle-badge">Full S</span>
-                                <span>if there is enough in sale proceeds, reinvests all of them in multiples of the minimum investment, else invests the minimum from deposits.</span>
+                                <span class="strategy-toggle-content">
+                                    <span class="strategy-toggle-badge">Full S</span>
+                                    <span class="strategy-toggle-desc">Reinvests all sales in multiples of the minimum investment.</span>
+                                </span>
+                                <span class="toggle-switch"></span>
                             </label>
                             <label class="strategy-toggle">
                                 <input type="checkbox" class="strategy-toggle-input" value="Fixed D + Full S" checked>
-                                <span class="strategy-toggle-badge">Fixed D + Full S</span>
-                                <span>always invests the weekly minimum from deposits and also reinvests all sale proceeds.</span>
+                                <span class="strategy-toggle-content">
+                                    <span class="strategy-toggle-badge">Fixed D + Full S</span>
+                                    <span class="strategy-toggle-desc">Weekly minimum from deposits plus all sales.</span>
+                                </span>
+                                <span class="toggle-switch"></span>
                             </label>
                             <label class="strategy-toggle">
                                 <input type="checkbox" class="strategy-toggle-input" value="Smooth S" checked>
-                                <span class="strategy-toggle-badge">Smooth S</span>
-                                <span>if sale proceeds reach the next band threshold (N × min), spreads reinvestment evenly over N weeks, else invests the minimum from deposits.</span>
+                                <span class="strategy-toggle-content">
+                                    <span class="strategy-toggle-badge">Smooth S</span>
+                                    <span class="strategy-toggle-desc">Spreads sales reinvestment evenly over N weeks.</span>
+                                </span>
+                                <span class="toggle-switch"></span>
                             </label>
                             <label class="strategy-toggle">
                                 <input type="checkbox" class="strategy-toggle-input" value="Fixed D + Smooth S" checked>
-                                <span class="strategy-toggle-badge">Fixed D + Smooth S</span>
-                                <span>always invests the weekly minimum from deposits and also applies the smooth reinvestment from sale proceeds.</span>
+                                <span class="strategy-toggle-content">
+                                    <span class="strategy-toggle-badge">Fixed D + Smooth S</span>
+                                    <span class="strategy-toggle-desc">Weekly minimum plus smoothed sales reinvestment.</span>
+                                </span>
+                                <span class="toggle-switch"></span>
                             </label>
                             <label class="strategy-toggle">
                                 <input type="checkbox" class="strategy-toggle-input" value="Half S" checked>
-                                <span class="strategy-toggle-badge">Half S</span>
-                                <span>if 50 % of sale proceeds is at least the minimum investment, reinvests that half, else invests the minimum from deposits.</span>
+                                <span class="strategy-toggle-content">
+                                    <span class="strategy-toggle-badge">Half S</span>
+                                    <span class="strategy-toggle-desc">Reinvests 50% of sales when above the minimum.</span>
+                                </span>
+                                <span class="toggle-switch"></span>
                             </label>
                             <label class="strategy-toggle">
                                 <input type="checkbox" class="strategy-toggle-input" value="Fixed D + Half S" checked>
-                                <span class="strategy-toggle-badge">Fixed D + Half S</span>
-                                <span>always invests the weekly minimum from deposits and also reinvests 50 % of sale proceeds.</span>
+                                <span class="strategy-toggle-content">
+                                    <span class="strategy-toggle-badge">Fixed D + Half S</span>
+                                    <span class="strategy-toggle-desc">Weekly minimum plus 50% of sales.</span>
+                                </span>
+                                <span class="toggle-switch"></span>
                             </label>
                             <label class="strategy-toggle">
                                 <input type="checkbox" class="strategy-toggle-input" value="Doubling S" checked>
-                                <span class="strategy-toggle-badge">Doubling S</span>
-                                <span>if there is enough in sale proceeds, reinvests them following a doubling memory behavior, else invests the minimum from deposits.</span>
+                                <span class="strategy-toggle-content">
+                                    <span class="strategy-toggle-badge">Doubling S</span>
+                                    <span class="strategy-toggle-desc">Reinvests sales with doubling memory.</span>
+                                </span>
+                                <span class="toggle-switch"></span>
                             </label>
                             <label class="strategy-toggle">
                                 <input type="checkbox" class="strategy-toggle-input" value="Fixed D + Doubling S" checked>
-                                <span class="strategy-toggle-badge">Fixed D + Doubling S</span>
-                                <span>always invests the weekly minimum from deposits and also applies the doubling reinvestment from sale proceeds.</span>
+                                <span class="strategy-toggle-content">
+                                    <span class="strategy-toggle-badge">Fixed D + Doubling S</span>
+                                    <span class="strategy-toggle-desc">Weekly minimum plus doubling reinvestment.</span>
+                                </span>
+                                <span class="toggle-switch"></span>
                             </label>
                         </div>
                     </div>
                 </div>
-                <div class="mt-4">
-                    <button id="btn-calculate" class="btn btn-primary">Calculate</button>
+                <div class="mt-4 d-flex align-items-center gap-3">
+                    <button id="btn-calculate" class="btn btn-primary">Calculate →</button>
+                    <span class="run-info" id="run-info"></span>
                 </div>
             </section>
         </div>
@@ -127,6 +179,26 @@
         <div id="results"></div>
     </div>
 
+    <script>
+    // Input mode tabs (Fields / Paste block)
+    document.querySelectorAll('.input-mode-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.input-mode-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            const mode = tab.dataset.mode;
+            document.getElementById('input-fields-mode').style.display = mode === 'fields' ? '' : 'none';
+            document.getElementById('input-paste-mode').style.display = mode === 'paste' ? '' : 'none';
+        });
+    });
+
+    // Select All / None
+    document.getElementById('btn-select-all')?.addEventListener('click', () => {
+        document.querySelectorAll('.strategy-toggle-input').forEach(cb => { cb.checked = true; cb.dispatchEvent(new Event('change', {bubbles: true})); });
+    });
+    document.getElementById('btn-select-none')?.addEventListener('click', () => {
+        document.querySelectorAll('.strategy-toggle-input').forEach(cb => { cb.checked = false; cb.dispatchEvent(new Event('change', {bubbles: true})); });
+    });
+    </script>
     <script type="module" src="app.js"></script>
 </body>
 </html>
