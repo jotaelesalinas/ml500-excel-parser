@@ -4,7 +4,7 @@ export class CalculationController {
     processableTabsService,
     portfolioResultsCalculator,
     statusView,
-    resultsTableView,
+    uiState,
     loadButtonElement,
     calculateButtonElement,
     spreadsheetUrlElement,
@@ -21,7 +21,7 @@ export class CalculationController {
     this.processableTabsService = processableTabsService;
     this.portfolioResultsCalculator = portfolioResultsCalculator;
     this.statusView = statusView;
-    this.resultsTableView = resultsTableView;
+    this.uiState = uiState;
     this.loadButtonElement = loadButtonElement;
     this.calculateButtonElement = calculateButtonElement;
     this.spreadsheetUrlElement = spreadsheetUrlElement;
@@ -37,12 +37,6 @@ export class CalculationController {
     this.loadedTabs = null;
     this.loadedCacheKey = null;
     this.pendingLoadPromise = null;
-    this.activeProcessCount = 0;
-
-    this.loadButtonLabelDefault = "Load data";
-    this.loadButtonLabelLoaded = "Reload";
-    this.loadButtonLabelLoading = "Loading data...";
-    this.resetLoadButtonLabel();
   }
 
   bind() {
@@ -74,22 +68,22 @@ export class CalculationController {
       return;
     }
 
-    this.beginProcessing();
     try {
       const tabs = await this.ensureDataLoaded();
       if (!tabs) {
         return;
       }
+      this.uiState.setProcessing(true);
       this.statusView.show(`Calculating results for ${tabs.length} tab(s)...`, "info");
-      this.resultsTableView.clearSelection?.();
+      this.uiState.clearResultsSelection();
       const results = this.portfolioResultsCalculator.calculate(tabs, firstNValues, strategy);
       this.statusView.clear();
-      this.resultsTableView.render(results);
+      this.uiState.setResults(results);
     } catch (error) {
       this.statusView.show(`Error: ${error.message}`, "error");
       this.logger.error(error);
     } finally {
-      this.endProcessing();
+      this.uiState.setProcessing(false);
     }
   }
 
@@ -120,8 +114,8 @@ export class CalculationController {
       return this.loadedTabs;
     }
 
-    this.beginProcessing();
-    this.loadButtonElement.textContent = this.loadButtonLabelLoading;
+    this.uiState.setProcessing(true);
+    this.uiState.setLoadButtonLabel("Loading data...");
     this.statusView.show("Loading data from Google Sheets...", "info");
 
     const loadPromise = this.processableTabsService
@@ -133,7 +127,7 @@ export class CalculationController {
       .then((tabs) => {
         this.loadedTabs = tabs;
         this.loadedCacheKey = resolvedContext.cacheKey;
-        this.loadButtonElement.textContent = this.loadButtonLabelLoaded;
+        this.uiState.setLoadButtonLabel("Reload");
         this.statusView.show(`Loaded ${tabs.length} tab(s).`, "info");
         return tabs;
       })
@@ -142,11 +136,11 @@ export class CalculationController {
         this.logger.error(error);
         this.loadedTabs = null;
         this.loadedCacheKey = null;
-        this.resetLoadButtonLabel();
+        this.uiState.setLoadButtonLabel("Load data");
         return null;
       })
       .finally(() => {
-        this.endProcessing();
+        this.uiState.setProcessing(false);
         if (this.pendingLoadPromise === loadPromise) {
           this.pendingLoadPromise = null;
         }
@@ -166,7 +160,7 @@ export class CalculationController {
       this.statusView.show("Please enter a Google Sheets URL.", "error");
       this.loadedTabs = null;
       this.loadedCacheKey = null;
-      this.resetLoadButtonLabel();
+      this.uiState.setLoadButtonLabel("Load data");
       return null;
     }
 
@@ -174,7 +168,7 @@ export class CalculationController {
       this.statusView.show("Please enter a Google API Key.", "error");
       this.loadedTabs = null;
       this.loadedCacheKey = null;
-      this.resetLoadButtonLabel();
+      this.uiState.setLoadButtonLabel("Load data");
       return null;
     }
 
@@ -185,7 +179,7 @@ export class CalculationController {
       this.statusView.show(error.message, "error");
       this.loadedTabs = null;
       this.loadedCacheKey = null;
-      this.resetLoadButtonLabel();
+      this.uiState.setLoadButtonLabel("Load data");
       return null;
     }
 
@@ -222,26 +216,6 @@ export class CalculationController {
     if (parsed.minInvestment && this.minInvestmentElement) {
       this.minInvestmentElement.value = parsed.minInvestment;
     }
-  }
-
-  resetLoadButtonLabel() {
-    this.loadButtonElement.textContent = this.loadButtonLabelDefault;
-  }
-
-  beginProcessing() {
-    this.activeProcessCount += 1;
-    this.syncProcessingState();
-  }
-
-  endProcessing() {
-    this.activeProcessCount = Math.max(0, this.activeProcessCount - 1);
-    this.syncProcessingState();
-  }
-
-  syncProcessingState() {
-    const isProcessing = this.activeProcessCount > 0;
-    this.loadButtonElement.disabled = isProcessing;
-    this.calculateButtonElement.disabled = isProcessing;
   }
 
   parseStrategyInputs() {
@@ -285,4 +259,3 @@ export class CalculationController {
     return value;
   }
 }
-

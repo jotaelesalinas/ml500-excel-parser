@@ -3,13 +3,17 @@ import { CalculationController } from "../src/app/CalculationController.js";
 describe("CalculationController", () => {
   function createController(overrides = {}) {
     const loadButtonElement = {
-      disabled: false,
-      textContent: "",
-      addEventListener: jasmine.createSpy("addEventListener"),
+      addEventListener: jasmine.createSpy("loadButtonAddEventListener"),
     };
     const calculateButtonElement = {
-      disabled: false,
-      addEventListener: jasmine.createSpy("addEventListener"),
+      addEventListener: jasmine.createSpy("calculateButtonAddEventListener"),
+    };
+
+    const uiState = {
+      setProcessing: jasmine.createSpy("setProcessing"),
+      setLoadButtonLabel: jasmine.createSpy("setLoadButtonLabel"),
+      clearResultsSelection: jasmine.createSpy("clearResultsSelection"),
+      setResults: jasmine.createSpy("setResults"),
     };
 
     const deps = {
@@ -26,10 +30,7 @@ describe("CalculationController", () => {
         show: jasmine.createSpy("show"),
         clear: jasmine.createSpy("clear"),
       },
-      resultsTableView: {
-        render: jasmine.createSpy("render"),
-        clearSelection: jasmine.createSpy("clearSelection"),
-      },
+      uiState,
       loadButtonElement,
       calculateButtonElement,
       spreadsheetUrlElement: { value: "https://docs.google.com/spreadsheets/d/abc/edit" },
@@ -54,7 +55,7 @@ describe("CalculationController", () => {
       ...overrides,
     };
 
-    return { controller: new CalculationController(deps), deps };
+    return { controller: new CalculationController(deps), deps, uiState };
   }
 
   it("binds click events", () => {
@@ -66,12 +67,6 @@ describe("CalculationController", () => {
     expect(deps.calculateButtonElement.addEventListener).toHaveBeenCalledWith("click", jasmine.any(Function));
   });
 
-  it("starts with load button label", () => {
-    const { deps } = createController();
-
-    expect(deps.loadButtonElement.textContent).toBe("Load data");
-  });
-
   it("parses First N values", () => {
     const { controller } = createController();
 
@@ -79,27 +74,30 @@ describe("CalculationController", () => {
   });
 
   it("shows validation error for missing URL on load", async () => {
-    const { controller, deps } = createController({ spreadsheetUrlElement: { value: "" } });
+    const { controller, deps, uiState } = createController({ spreadsheetUrlElement: { value: "" } });
 
     await controller.handleLoadButton();
 
     expect(deps.statusView.show).toHaveBeenCalledWith("Please enter a Google Sheets URL.", "error");
     expect(deps.processableTabsService.fetchAll).not.toHaveBeenCalled();
-    expect(deps.loadButtonElement.textContent).toBe("Load data");
+    expect(uiState.setLoadButtonLabel).toHaveBeenCalledWith("Load data");
+    expect(uiState.setProcessing).not.toHaveBeenCalled();
   });
 
-  it("loads data successfully and sets Reload label", async () => {
-    const { controller, deps } = createController();
+  it("loads data successfully and writes processing and label state to the store", async () => {
+    const { controller, deps, uiState } = createController();
 
     await controller.handleLoadButton();
 
     expect(deps.processableTabsService.fetchAll).toHaveBeenCalledWith("sheet-id", "api-key", jasmine.any(Function));
-    expect(deps.loadButtonElement.textContent).toBe("Reload");
-    expect(deps.loadButtonElement.disabled).toBeFalse();
+    expect(uiState.setProcessing).toHaveBeenCalledWith(true);
+    expect(uiState.setLoadButtonLabel).toHaveBeenCalledWith("Loading data...");
+    expect(uiState.setLoadButtonLabel).toHaveBeenCalledWith("Reload");
+    expect(uiState.setProcessing).toHaveBeenCalledWith(false);
   });
 
-  it("runs successful calculation flow with auto-load", async () => {
-    const { controller, deps } = createController();
+  it("runs successful calculation flow with auto-load through the store", async () => {
+    const { controller, deps, uiState } = createController();
 
     await controller.handleCalculate();
 
@@ -110,9 +108,10 @@ describe("CalculationController", () => {
       { minDeposit: 1000, minInvestment: 100, smoothN: 4 },
     );
     expect(deps.statusView.clear).toHaveBeenCalled();
-    expect(deps.resultsTableView.clearSelection).toHaveBeenCalled();
-    expect(deps.resultsTableView.render).toHaveBeenCalledWith([{ tab: "Tab" }]);
-    expect(deps.calculateButtonElement.disabled).toBeFalse();
+    expect(uiState.clearResultsSelection).toHaveBeenCalled();
+    expect(uiState.setResults).toHaveBeenCalledWith([{ tab: "Tab" }]);
+    expect(uiState.setProcessing).toHaveBeenCalledWith(true);
+    expect(uiState.setProcessing).toHaveBeenCalledWith(false);
   });
 
   it("does not reload if cached data is still valid", async () => {
@@ -162,9 +161,9 @@ describe("CalculationController", () => {
     );
   });
 
-  it("resets button to Load data when loading fails", async () => {
+  it("resets the load label when loading fails", async () => {
     const error = new Error("service down");
-    const { controller, deps } = createController({
+    const { controller, deps, uiState } = createController({
       processableTabsService: {
         fetchAll: jasmine.createSpy("fetchAll").and.rejectWith(error),
       },
@@ -174,7 +173,8 @@ describe("CalculationController", () => {
 
     expect(deps.statusView.show).toHaveBeenCalledWith("Error: service down", "error");
     expect(deps.logger.error).toHaveBeenCalledWith(error);
-    expect(deps.loadButtonElement.textContent).toBe("Load data");
-    expect(deps.loadButtonElement.disabled).toBeFalse();
+    expect(uiState.setLoadButtonLabel).toHaveBeenCalledWith("Load data");
+    expect(uiState.setProcessing).toHaveBeenCalledWith(true);
+    expect(uiState.setProcessing).toHaveBeenCalledWith(false);
   });
 });

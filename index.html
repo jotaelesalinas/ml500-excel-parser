@@ -179,26 +179,6 @@
         <div id="results"></div>
     </div>
 
-    <script>
-    // Input mode tabs (Fields / Paste block)
-    document.querySelectorAll('.input-mode-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-            document.querySelectorAll('.input-mode-tab').forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            const mode = tab.dataset.mode;
-            document.getElementById('input-fields-mode').style.display = mode === 'fields' ? '' : 'none';
-            document.getElementById('input-paste-mode').style.display = mode === 'paste' ? '' : 'none';
-        });
-    });
-
-    // Select All / None
-    document.getElementById('btn-select-all')?.addEventListener('click', () => {
-        document.querySelectorAll('.strategy-toggle-input').forEach(cb => { cb.checked = true; cb.dispatchEvent(new Event('change', {bubbles: true})); });
-    });
-    document.getElementById('btn-select-none')?.addEventListener('click', () => {
-        document.querySelectorAll('.strategy-toggle-input').forEach(cb => { cb.checked = false; cb.dispatchEvent(new Event('change', {bubbles: true})); });
-    });
-    </script>
     <script type="module" src="app.js"></script>
 </body>
 </html>

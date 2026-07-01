@@ -25,6 +25,10 @@ npm test    # runs the Jasmine test suite
 
 No build step — the app uses native ES modules served directly by `serve`.
 
+## Frontend architecture
+
+The UI layer is split into an explicit state store plus small controllers and renderers. See `docs/frontend-architecture.md` for the contributor-facing boundaries.
+
 ## Google Sheets format
 
 Each tab you want analyzed must have a header row (row 1) with **at least** these column names (case-insensitive):

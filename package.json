@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "npx serve . --listen 8080",
+    "lint": "node ./scripts/lint.mjs",
     "test": "jasmine --config=spec/support/jasmine.json"
   },
   "devDependencies": {
