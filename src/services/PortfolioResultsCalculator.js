@@ -34,7 +34,11 @@ export class PortfolioResultsCalculator {
     const configuredMinDeposit = this.#toPositiveAmount(strategy.minDeposit, this.minDeposit);
     const configuredMinInvestment = this.#toPositiveAmount(strategy.minInvestment, this.minInvestment);
     const configuredSmoothN = this.#toPositiveAmount(strategy.smoothN, 4);
-    const saleBlockScheduler = this.#buildSaleBlockScheduler(strategy.saleBlockLookbacks, history);
+    const saleBlockScheduler = this.#buildSaleBlockScheduler(
+      strategy.saleBlockLookbacks,
+      strategy.trackingStopPct,
+      history,
+    );
     const strategyVariants = [
       { strat: "Fixed D" },
       { strat: "Fixed S|D" },
@@ -180,9 +184,7 @@ export class PortfolioResultsCalculator {
               lastSaleDate = date;
               addLogRow({
                 date,
-                action: movement.blockedFrom
-                  ? `Sell ${movement.ticker} (held from ${movement.blockedFrom})`
-                  : `Sell ${movement.ticker}`,
+                action: this.#sellLabel(movement),
                 qty: scaledQty > 0 ? scaledQty : null,
                 amount: scaledAmount,
               });
@@ -305,8 +307,22 @@ export class PortfolioResultsCalculator {
     return results;
   }
 
+  // Says why a sale left its scheduled date: the stop brought it forward, the index
+  // held it back, or both.
+  #sellLabel(movement) {
+    const notes = [];
+    if (movement.stopLoss) {
+      notes.push("stop loss");
+    }
+    if (movement.blockedFrom) {
+      notes.push(`held from ${movement.blockedFrom}`);
+    }
+
+    return notes.length === 0 ? `Sell ${movement.ticker}` : `Sell ${movement.ticker} (${notes.join(", ")})`;
+  }
+
   // Returns null when the feature is off, so the mapped movements are used as they are.
-  #buildSaleBlockScheduler(rawLookbacks, history) {
+  #buildSaleBlockScheduler(rawLookbacks, rawTrackingStopPct, history) {
     const lookbacks = Array.isArray(rawLookbacks) ? rawLookbacks : [];
     if (lookbacks.length === 0) {
       return null;
@@ -321,6 +337,7 @@ export class PortfolioResultsCalculator {
       indexSeries: history.indexSeries,
       priceSeriesByTicker: history.priceSeriesByTicker || new Map(),
       lookbacks,
+      trackingStopPct: Number(rawTrackingStopPct) > 0 ? Number(rawTrackingStopPct) : 0,
       todayProvider: this.todayProvider,
     });
   }

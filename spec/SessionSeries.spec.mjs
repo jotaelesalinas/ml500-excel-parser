@@ -74,4 +74,17 @@ describe("SessionSeries", () => {
       ]).changePctOverSessions("2025-01-07", 1),
     ).toBeNull();
   });
+  it("lists the sessions on or after a date", () => {
+    const series = new SessionSeries([
+      { date: "2025-01-02", value: 100 },
+      { date: "2025-01-03", value: 90 },
+      { date: "2025-01-06", value: 95 },
+    ]);
+
+    expect(series.sessionsFrom("2025-01-03").map((session) => session.date)).toEqual(["2025-01-03", "2025-01-06"]);
+    // A closed day starts on the next session, not on the one before it.
+    expect(series.sessionsFrom("2025-01-04").map((session) => session.date)).toEqual(["2025-01-06"]);
+    expect(series.sessionsFrom("2024-12-31").length).toBe(3);
+    expect(series.sessionsFrom("2025-01-07")).toEqual([]);
+  });
 });

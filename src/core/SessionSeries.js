@@ -57,6 +57,17 @@ export class SessionSeries {
     return this.sessions.slice(this.indexAtOrBefore(date) + 1);
   }
 
+  // Sessions on or after the given date, so a day that quoted is included in its own
+  // range.
+  sessionsFrom(date) {
+    const index = this.indexAtOrBefore(date);
+    if (index < 0) {
+      return this.sessions.slice();
+    }
+
+    return this.sessions.slice(this.sessions[index].date === date ? index : index + 1);
+  }
+
   // Percentage change between the session covering `date` and the one `sessionCount`
   // sessions earlier. Returns null when there is not enough history to compare.
   changePctOverSessions(date, sessionCount) {

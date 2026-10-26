@@ -1,3 +1,5 @@
+import { TRACKING_STOP_LABEL } from "../config/constants.js";
+
 export class CalculationController {
   constructor({
     spreadsheetIdExtractor,
@@ -13,7 +15,9 @@ export class CalculationController {
     minDepositElement,
     minInvestmentElement,
     smoothNElement,
+    saleBlockEnabledElement,
     saleBlockElement,
+    trackingStopElement,
     bulkInputElement,
     bulkFormInputParser,
     saleBlockLookbackParser,
@@ -33,7 +37,9 @@ export class CalculationController {
     this.minDepositElement = minDepositElement;
     this.minInvestmentElement = minInvestmentElement;
     this.smoothNElement = smoothNElement;
+    this.saleBlockEnabledElement = saleBlockEnabledElement;
     this.saleBlockElement = saleBlockElement;
+    this.trackingStopElement = trackingStopElement;
     this.bulkInputElement = bulkInputElement;
     this.bulkFormInputParser = bulkFormInputParser;
     this.saleBlockLookbackParser = saleBlockLookbackParser;
@@ -255,13 +261,30 @@ export class CalculationController {
       return null;
     }
 
+    // With the block off nothing else is read: the sheet decides the sales, as it did
+    // before the block existed.
+    if (!this.saleBlockEnabledElement?.checked) {
+      return {
+        minDeposit,
+        minInvestment,
+        smoothN,
+        saleBlockLookbacks: [],
+        trackingStopPct: 0,
+      };
+    }
+
     let saleBlockLookbacks;
     try {
       saleBlockLookbacks = this.saleBlockLookbackParser
-        ? this.saleBlockLookbackParser.parse(this.saleBlockElement?.value)
+        ? this.saleBlockLookbackParser.parse(this.saleBlockElement?.value, { required: true })
         : [];
     } catch (error) {
       this.statusView.show(error.message, "error");
+      return null;
+    }
+
+    const trackingStopPct = this.#parseStopPercentage(this.trackingStopElement?.value);
+    if (trackingStopPct == null) {
       return null;
     }
 
@@ -270,6 +293,7 @@ export class CalculationController {
       minInvestment,
       smoothN,
       saleBlockLookbacks,
+      trackingStopPct,
     };
   }
 
@@ -282,6 +306,7 @@ export class CalculationController {
       tabs,
       firstNValues,
       lookbacks: strategy.saleBlockLookbacks,
+      trackingStopPct: strategy.trackingStopPct,
       history,
     });
   }
@@ -307,6 +332,19 @@ export class CalculationController {
 
     warnings.forEach((warning) => this.logger.warn(warning));
     this.statusView.show(`${warnings.length} warning(s): ${warnings.join(" ")}`, "warning");
+  }
+
+  // A drop of 100% or more could never happen, so it would silently disable the stop.
+  #parseStopPercentage(rawValue) {
+    const value = Number(String(rawValue ?? "").trim());
+    if (!Number.isFinite(value) || value <= 0 || value >= 100) {
+      this.statusView.show(
+        `Please enter a valid "${TRACKING_STOP_LABEL}" percentage greater than 0 and lower than 100.`,
+        "error",
+      );
+      return null;
+    }
+    return value;
   }
 
   #parsePositiveNumber(rawValue, validationMessage) {

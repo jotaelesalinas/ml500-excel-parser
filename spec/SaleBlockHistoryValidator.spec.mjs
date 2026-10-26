@@ -133,4 +133,63 @@ describe("SaleBlockHistoryValidator", () => {
       "And 2 more sale(s) with no price history after their sale date.",
     );
   });
+
+  // The stop reads the running maximum from the purchase, so a position whose prices
+  // start later cannot be watched at all.
+  describe("with a tracking stop loss", () => {
+    it("refuses a position with no price on or before its purchase", () => {
+      const result = new SaleBlockHistoryValidator().validate({
+        tabs: tabsWith([
+          { ticker: "AAPL", fechac: "2025-01-02", fechav: "2025-01-07" },
+          { ticker: "NVDA", fechac: "2025-01-02", precioa: "120" },
+        ]),
+        firstNValues: [4],
+        lookbacks: [2],
+        trackingStopPct: 20,
+        history: historyWith(),
+      });
+
+      expect(result.errors).toEqual([
+        '"Tracking stop loss" needs the price history of AAPL from its purchase on 2025-01-02 (bought in '
+          + '"Tab A"), but the "Prices hist" tab has no price for AAPL on or before that date.',
+        '"Tracking stop loss" needs the price history of NVDA from its purchase on 2025-01-02 (bought in '
+          + '"Tab A"), but the "Prices hist" tab has no price for NVDA on or before that date.',
+      ]);
+      // Nothing else is reported while the calculation cannot run anyway.
+      expect(result.warnings).toEqual([]);
+    });
+
+    it("says nothing when every purchase is covered", () => {
+      const result = new SaleBlockHistoryValidator().validate({
+        tabs: tabsWith([{ ticker: "AAPL", fechac: "2025-01-06", fechav: "2025-01-07" }]),
+        firstNValues: [4],
+        lookbacks: [2],
+        trackingStopPct: 20,
+        history: historyWith(),
+      });
+
+      expect(result.errors).toEqual([]);
+    });
+
+    it("counts the extra positions once the list gets long", () => {
+      const entries = Array.from({ length: 7 }, (_, index) => ({
+        ticker: `T${index}`,
+        fechac: "2025-01-02",
+        precioa: "120",
+      }));
+
+      const result = new SaleBlockHistoryValidator().validate({
+        tabs: tabsWith(entries),
+        firstNValues: [10],
+        lookbacks: [2],
+        trackingStopPct: 20,
+        history: historyWith(),
+      });
+
+      expect(result.errors.length).toBe(6);
+      expect(result.errors[5]).toBe(
+        "And 2 more position(s) with no price history on their purchase date.",
+      );
+    });
+  });
 });

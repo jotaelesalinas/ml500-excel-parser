@@ -17,7 +17,9 @@ describe("bootstrap", () => {
           "min-deposit": {},
           "min-investment": {},
           "smooth-n": {},
+          "sale-block-enabled": {},
           "sale-block": {},
+          "tracking-stop": {},
           "bulk-input": {},
         };
         return elements[id] || null;

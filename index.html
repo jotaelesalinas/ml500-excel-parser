@@ -77,9 +77,19 @@
                                 <input type="number" id="smooth-n" class="form-control" value="4" min="2" step="1">
                             </div>
                             <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="sale-block-enabled">
+                                    <label class="form-check-label" for="sale-block-enabled">Block sales on a falling S&amp;P 500</label>
+                                </div>
+                                <div class="form-text">Off, sales happen exactly as the sheet says. On, a sale is held back while the S&amp;P 500 is below its value N sessions ago and every position is watched with a trailing stop loss. Needs the "Index hist" and "Prices hist" tabs.</div>
+                            </div>
+                            <div class="col-6">
                                 <label for="sale-block" class="form-label">Block sales S&amp;P 500 -D</label>
-                                <input type="text" id="sale-block" class="form-control" value="20,50,100">
-                                <div class="form-text">Holds back a sale while the S&amp;P 500 is below its value N sessions ago, for any N in the list. Needs the "Index hist" and "Prices hist" tabs. Leave empty to disable.</div>
+                                <input type="text" id="sale-block" class="form-control" value="20,50,100" disabled>
+                            </div>
+                            <div class="col-6">
+                                <label for="tracking-stop" class="form-label">Tracking stop loss (%)</label>
+                                <input type="number" id="tracking-stop" class="form-control" value="20" min="1" max="99" step="1" disabled>
                             </div>
                         </div>
                         <div class="summary-line" id="run-summary"></div>

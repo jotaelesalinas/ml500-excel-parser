@@ -38,12 +38,18 @@ function createDocumentStub() {
   const selectNoneElement = createElement();
   const checkboxA = createElement({ value: "Fixed D", checked: true });
   const checkboxB = createElement({ value: "Full S", checked: true });
+  const saleBlockEnabledElement = createElement();
+  const saleBlockElement = Object.assign(createElement({ value: "20,50,100" }), { disabled: false });
+  const trackingStopElement = Object.assign(createElement({ value: "20" }), { disabled: false });
 
   const elements = {
     "input-fields-mode": fieldsModeElement,
     "input-paste-mode": pasteModeElement,
     "btn-select-all": selectAllElement,
     "btn-select-none": selectNoneElement,
+    "sale-block-enabled": saleBlockEnabledElement,
+    "sale-block": saleBlockElement,
+    "tracking-stop": trackingStopElement,
   };
 
   return {
@@ -54,6 +60,9 @@ function createDocumentStub() {
     selectNoneElement,
     checkboxA,
     checkboxB,
+    saleBlockEnabledElement,
+    saleBlockElement,
+    trackingStopElement,
     getElementById: jasmine.createSpy("getElementById").and.callFake((id) => elements[id] || null),
     querySelectorAll: jasmine.createSpy("querySelectorAll").and.callFake((selector) => {
       if (selector === ".input-mode-tab") {
@@ -110,5 +119,27 @@ describe("PageControlsController", () => {
     documentStub.checkboxB.trigger("change");
 
     expect(Array.from(uiState.getState().visibleStrategies)).toEqual(["Fixed D"]);
+  });
+
+  it("enables the lookbacks and the stop only while the sale block is on", () => {
+    const documentStub = createDocumentStub();
+    const controller = new PageControlsController(documentStub, createUiState(), [documentStub.checkboxA]);
+
+    controller.bind();
+
+    expect(documentStub.saleBlockElement.disabled).toBeTrue();
+    expect(documentStub.trackingStopElement.disabled).toBeTrue();
+
+    documentStub.saleBlockEnabledElement.checked = true;
+    documentStub.saleBlockEnabledElement.trigger("change");
+
+    expect(documentStub.saleBlockElement.disabled).toBeFalse();
+    expect(documentStub.trackingStopElement.disabled).toBeFalse();
+
+    documentStub.saleBlockEnabledElement.checked = false;
+    documentStub.saleBlockEnabledElement.trigger("change");
+
+    expect(documentStub.saleBlockElement.disabled).toBeTrue();
+    expect(documentStub.trackingStopElement.disabled).toBeTrue();
   });
 });

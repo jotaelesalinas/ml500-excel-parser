@@ -66,17 +66,30 @@ Your API key is never stored — it only lives in the browser page while you use
 - Enter one or more Top N values, comma-separated (e.g. `4, 10, 20`)
 - Enter **Minimum deposit** (default `1000`)
 - Enter **Minimum investment** (default `100`)
-- Enter **Block sales S&P 500 -D** (default `20,50,100`, empty to disable)
+- Switch **Block sales on a falling S&P 500** on or off (off by default). With it on,
+  fill **Block sales S&P 500 -D** (default `20,50,100`) and **Tracking stop loss (%)**
+  (default `20`); both fields are disabled while it is off
 
 **Bulk input** (right textarea): paste lines in order — URL, API key, Top N values, minimum deposit, minimum investment. The fields on the left will be filled automatically when you click Calculate.
 
 ## Blocking sales on a falling S&P 500
 
-**Block sales S&P 500 -D** holds a sale back while the index is below where it was a
-while ago. The field takes positive whole numbers separated by commas (e.g. `20,50,100`),
-each one a number of **sessions** — days the market actually quoted, so weekends and
-holidays are not counted. Leave it empty to sell exactly as the sheet says; anything that
-is not a list of positive whole numbers is rejected.
+**Block sales on a falling S&P 500** is off by default, and with it off nothing changes:
+every position is sold exactly as the sheet says, and the two history tabs below are
+ignored. Switching it on enables its two fields and changes how sales are decided.
+
+**Block sales S&P 500 -D** takes positive whole numbers separated by commas (e.g.
+`20,50,100`), each one a number of **sessions** — days the market actually quoted, so
+weekends and holidays are not counted. An empty field, or anything that is not a list of
+positive whole numbers, is rejected: the block cannot run without a lookback.
+
+**Tracking stop loss (%)** takes a percentage greater than 0 and lower than 100
+(default `20`).
+
+With the block on, two things can sell a position, and the index has the last word on
+both.
+
+### The sheet's sale
 
 On the day a sale is due (the row's `FechaV`), the index is compared with its value N
 sessions earlier for every N in the list. **If any of those changes is negative the sale
@@ -88,8 +101,31 @@ price history, not with the sheet's `PrecioV`. The action log shows those sales 
 If the index is still down when the history runs out, the sale never happened: the
 position stays open and is valued at the last price available.
 
-This needs two extra tabs in the same spreadsheet. Both are ignored when the field is
-empty.
+### The trailing stop loss
+
+The stop watches **every position** from its purchase (`FechaC`), the ones the sheet
+sells and the ones it still holds. Session by session it keeps the highest close seen
+since the purchase and compares the current close with it: a close that is the configured
+percentage or more below that maximum breaks the stop. The maximum comes from the price
+history alone, so the sheet's `PrecioC` is never the first maximum.
+
+The stop is a condition, not a queued order, so the index cannot hold it back: it sells
+on the first session that is **both** below the stop level **and** not blocked by the
+index. While sales are blocked the position keeps being watched, so a price that climbs
+back above the stop level simply cancels it, and the maximum keeps trailing from the new
+high. A stop that is never free to sell leaves the position open.
+
+A stop sale is priced with the close of the session it happens on, and the action log
+shows it as `Sell AAPL (stop loss)`. For a position the sheet sells later, the stop only
+matters when it sells first; a position the sheet does not sell at all is closed by the
+stop and its cash is reinvested like any other sale.
+
+Because the stop measures from the purchase, **every** position needs its ticker's prices
+from `FechaC` onwards, not only the sold ones. A position whose prices start later is an
+error, not a guess: see *What the app checks*.
+
+This needs two extra tabs in the same spreadsheet. Both are ignored while the block is
+off.
 
 ### `Index hist`
 
@@ -112,9 +148,8 @@ helper next to it and the `_SAMPLE_` template column are ignored:
 | `2023-01-03` | Tue | `#N/A` | `150.04` | `125.07` |
 | `2023-01-04` | Wed | `#N/A` | `151.67` | `126.36` |
 
-Only tickers that were sold (`FechaV` set) can ever be held back, so only those need a
-column, and only from their earliest `FechaV` onwards. Dates must be `YYYY-MM-DD`; cells
-without a usable price (`#N/A` on weekends, holidays and days outside the ticker's
+Every position is watched by the stop, so every ticker needs a column, with prices from
+its earliest `FechaC` onwards. Dates must be `YYYY-MM-DD`; cells without a usable price (`#N/A` on weekends, holidays and days outside the ticker's
 history) are skipped, so each ticker keeps its own sessions. Paste the prices as values
 once they are computed — hundreds of live GOOGLEFINANCE formulas are slow and return
 `#N/A` under rate limiting.
@@ -142,11 +177,16 @@ spreadsheet, and the browser console repeats them one by one:
 Repeated problems of the same kind are capped at five lines and then counted, so one
 badly pasted column does not flood the status line.
 
-**On Calculate**, with **Block sales S&P 500 -D** in use, the same warnings are shown
-again, plus one per sale that has no price after its `FechaV` — the sales that would stop
-the calculation if the index held them back. Two cases are errors instead, and no result
-is calculated: the index history is missing or unreadable, and the price history is
-missing or unreadable. Clear the field to calculate without any history.
+**On Calculate**, with the block on, the same warnings are shown again, plus one per sale
+that has no price after its `FechaV` — the sales that would stop the calculation if the
+index held them back. These cases are errors instead, and no result is calculated:
+
+- the index history is missing or unreadable;
+- the price history is missing or unreadable;
+- a position whose ticker has no price on or before its `FechaC`, which the stop would
+  otherwise watch from a later maximum (up to five are named, then counted).
+
+Switch the block off to calculate without any history.
 
 ## Investment allocation rules
 

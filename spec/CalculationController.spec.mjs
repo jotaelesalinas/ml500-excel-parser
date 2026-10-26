@@ -60,7 +60,9 @@ describe("CalculationController", () => {
       minDepositElement: { value: "1000" },
       minInvestmentElement: { value: "100" },
       smoothNElement: { value: "4" },
+      saleBlockEnabledElement: { checked: false },
       saleBlockElement: { value: "" },
+      trackingStopElement: { value: "20" },
       bulkInputElement: { value: "" },
       bulkFormInputParser: {
         parse: jasmine.createSpy("parse").and.returnValue({
@@ -129,7 +131,7 @@ describe("CalculationController", () => {
     expect(deps.portfolioResultsCalculator.calculate).toHaveBeenCalledWith(
       [{ name: "Tab", entries: [] }],
       [4, 10],
-      { minDeposit: 1000, minInvestment: 100, smoothN: 4, saleBlockLookbacks: [] },
+      { minDeposit: 1000, minInvestment: 100, smoothN: 4, saleBlockLookbacks: [], trackingStopPct: 0 },
       { indexSeries: null, priceSeriesByTicker: new Map() },
     );
     expect(deps.statusView.clear).toHaveBeenCalled();
@@ -182,7 +184,7 @@ describe("CalculationController", () => {
     expect(deps.portfolioResultsCalculator.calculate).toHaveBeenCalledWith(
       [{ name: "Tab", entries: [] }],
       [3, 8],
-      { minDeposit: 1500, minInvestment: 250, smoothN: 4, saleBlockLookbacks: [] },
+      { minDeposit: 1500, minInvestment: 250, smoothN: 4, saleBlockLookbacks: [], trackingStopPct: 0 },
       { indexSeries: null, priceSeriesByTicker: new Map() },
     );
   });
@@ -206,6 +208,7 @@ describe("CalculationController", () => {
   it("passes the parsed sale block lookbacks to the calculator", async () => {
     const history = usableHistory();
     const { controller, deps } = createController({
+      saleBlockEnabledElement: { checked: true },
       saleBlockElement: { value: "20, 50 ,100" },
       processableTabsService: {
         fetchAll: jasmine.createSpy("fetchAll").and.resolveTo({
@@ -220,14 +223,68 @@ describe("CalculationController", () => {
     expect(deps.portfolioResultsCalculator.calculate).toHaveBeenCalledWith(
       [{ name: "Tab", entries: [] }],
       [4, 10],
-      { minDeposit: 1000, minInvestment: 100, smoothN: 4, saleBlockLookbacks: [20, 50, 100] },
+      { minDeposit: 1000, minInvestment: 100, smoothN: 4, saleBlockLookbacks: [20, 50, 100], trackingStopPct: 20 },
       history,
     );
     expect(deps.statusView.clear).toHaveBeenCalled();
   });
 
+  it("ignores the lookbacks and the stop while the block is off", async () => {
+    const { controller, deps } = createController({
+      saleBlockEnabledElement: { checked: false },
+      saleBlockElement: { value: "20,50,100" },
+      trackingStopElement: { value: "nope" },
+    });
+
+    await controller.handleCalculate();
+
+    expect(deps.portfolioResultsCalculator.calculate).toHaveBeenCalledWith(
+      [{ name: "Tab", entries: [] }],
+      [4, 10],
+      { minDeposit: 1000, minInvestment: 100, smoothN: 4, saleBlockLookbacks: [], trackingStopPct: 0 },
+      { indexSeries: null, priceSeriesByTicker: new Map() },
+    );
+  });
+
+  it("reports an empty sale block field while the block is on", async () => {
+    const { controller, deps } = createController({
+      saleBlockEnabledElement: { checked: true },
+      saleBlockElement: { value: "" },
+    });
+
+    await controller.handleCalculate();
+
+    expect(deps.statusView.show).toHaveBeenCalledWith(
+      '"Block sales S&P 500 -D" is on, so it needs at least one number of sessions. Use positive whole numbers '
+        + 'separated by commas, for example "20,50,100".',
+      "error",
+    );
+    expect(deps.portfolioResultsCalculator.calculate).not.toHaveBeenCalled();
+  });
+
+  it("reports an unusable tracking stop loss without calculating", async () => {
+    const message =
+      'Please enter a valid "Tracking stop loss" percentage greater than 0 and lower than 100.';
+
+    for (const value of ["", "0", "-5", "100", "x"]) {
+      const { controller, deps } = createController({
+        saleBlockEnabledElement: { checked: true },
+        saleBlockElement: { value: "20" },
+        trackingStopElement: { value },
+      });
+
+      await controller.handleCalculate();
+
+      expect(deps.statusView.show).toHaveBeenCalledWith(message, "error");
+      expect(deps.portfolioResultsCalculator.calculate).not.toHaveBeenCalled();
+    }
+  });
+
   it("reports an invalid sale block value without calculating", async () => {
-    const { controller, deps } = createController({ saleBlockElement: { value: "20,x" } });
+    const { controller, deps } = createController({
+      saleBlockEnabledElement: { checked: true },
+      saleBlockElement: { value: "20,x" },
+    });
 
     await controller.handleCalculate();
 
@@ -240,7 +297,10 @@ describe("CalculationController", () => {
   });
 
   it("refuses to calculate when the sale block is on but the history tabs are missing", async () => {
-    const { controller, deps } = createController({ saleBlockElement: { value: "20" } });
+    const { controller, deps } = createController({
+      saleBlockEnabledElement: { checked: true },
+      saleBlockElement: { value: "20" },
+    });
 
     await controller.handleCalculate();
 
@@ -256,7 +316,11 @@ describe("CalculationController", () => {
   it("keeps the warnings on screen after calculating", async () => {
     const history = usableHistory();
     history.issues = ['"Prices hist": the MSFT column has no price at all.'];
+    // Covered on the purchase date, so the stop can watch it, but with nothing after the
+    // sale date, which is the warning this test is about.
+    history.priceSeriesByTicker.set("MSFT", new SessionSeries([{ date: "2025-01-02", value: 400 }]));
     const { controller, deps, uiState } = createController({
+      saleBlockEnabledElement: { checked: true },
       saleBlockElement: { value: "20" },
       processableTabsService: {
         fetchAll: jasmine.createSpy("fetchAll").and.resolveTo({

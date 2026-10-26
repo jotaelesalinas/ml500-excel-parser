@@ -641,6 +641,57 @@ describe("PortfolioResultsCalculator", () => {
       expect(result.invested).toBe(45);
     });
 
+    // Peak 55 on 01-02, so a 15% stop sits at 46.75: 01-06 closes at 48 and holds, and
+    // 01-07 closes at 45 with the index up again, which sells.
+    it("closes a position the sheet still holds when the stop hits", () => {
+      const calculator = new PortfolioResultsCalculator({
+        firstNFilter: { filter: (entries) => entries },
+        movementMapper: {
+          map: () => [
+            { action: "buy", date: "2025-01-02", ticker: "AAPL", qty: 10, amount: 1000, positionId: 1 },
+            { action: "valueToday", date: "2025-01-09", ticker: "AAPL", qty: 10, amount: 500, positionId: 1 },
+          ],
+        },
+        xirrCalculator: { calculate: () => 0.1 },
+        weightedAgeCalculator: { calculate: () => 1 },
+        logger: { warn: () => {} },
+        minDeposit: 1000,
+        minInvestment: 100,
+        todayProvider: () => "2025-01-09",
+      });
+
+      const results = calculator.calculate(
+        [{ name: "Tab A", entries: [{ ticker: "AAPL" }] }],
+        [4],
+        { saleBlockLookbacks: [2], trackingStopPct: 15 },
+        {
+          indexSeries,
+          priceSeriesByTicker: new Map([
+            [
+              "AAPL",
+              new SessionSeries([
+                { date: "2025-01-02", value: 55 },
+                { date: "2025-01-03", value: 50 },
+                { date: "2025-01-06", value: 48 },
+                { date: "2025-01-07", value: 45 },
+              ]),
+            ],
+          ]),
+        },
+      );
+
+      const result = byStrat(results, "Fixed D");
+      // 10 shares at 45 scaled by the 0.1 the buy was scaled with.
+      expect(sellRow(result)).toEqual(jasmine.objectContaining({
+        date: "2025-01-07",
+        action: "Sell AAPL (stop loss)",
+        amount: 45,
+      }));
+      expect(result.saleCash).toBe(45);
+      expect(result.closed).toBeTrue();
+      expect(result.asOf).toBe("2025-01-07");
+    });
+
     it("fails when the lookbacks are set but the history is missing", () => {
       const calculator = createCalculator();
       const indexMissing =

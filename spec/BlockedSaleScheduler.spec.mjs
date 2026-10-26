@@ -24,6 +24,7 @@ describe("BlockedSaleScheduler", () => {
     pricesUpTo = "2025-01-07",
     lookbacks = [2],
     tickers = ["AAPL"],
+    trackingStopPct = 0,
   } = {}) {
     const priceSeriesByTicker = new Map(
       tickers.map((ticker) => [
@@ -36,8 +37,17 @@ describe("BlockedSaleScheduler", () => {
       indexSeries: new SessionSeries(indexSessions.filter((session) => session.date <= indexUpTo)),
       priceSeriesByTicker,
       lookbacks,
+      trackingStopPct,
       todayProvider: () => "2025-01-09",
     });
+  }
+
+  function buyMovement(date) {
+    return { action: "buy", date, ticker: "AAPL", qty: 10, amount: 550, positionId: 1 };
+  }
+
+  function openMovement() {
+    return { action: "valueToday", date: "2025-01-09", ticker: "AAPL", qty: 10, amount: 600, positionId: 1 };
   }
 
   function sellMovement(date) {
@@ -153,5 +163,78 @@ describe("BlockedSaleScheduler", () => {
     expect(() =>
       scheduler.apply([{ action: "sell", date: "2025-01-03", ticker: "AAPL", qty: 0, amount: 500, positionId: 1 }]),
     ).toThrowError("Cannot re-price the sale of AAPL ordered on 2025-01-03: missing quantity.");
+  });
+
+  // The stop needs the purchase to read the running maximum from, so every case below
+  // goes through apply() with the buy movement of the position. Bought at 55 on 01-02,
+  // a 15% stop sits at 46.75, which 01-06 breaks at 45. With a single-session lookback
+  // 01-06 is not blocked, so the stop can sell there; the two-session lookback used
+  // everywhere else does block it.
+  describe("with a tracking stop loss", () => {
+    it("sells an open position on the session that hit the stop", () => {
+      const movements = createScheduler({ trackingStopPct: 15, lookbacks: [1] })
+        .apply([buyMovement("2025-01-02"), openMovement()]);
+
+      expect(movements[1]).toEqual({
+        action: "sell",
+        date: "2025-01-06",
+        ticker: "AAPL",
+        qty: 10,
+        amount: 450,
+        positionId: 1,
+        stopLoss: true,
+      });
+    });
+
+    it("brings the sheet's sale forward when the stop hits first", () => {
+      const movements = createScheduler({ trackingStopPct: 15, lookbacks: [1] })
+        .apply([buyMovement("2025-01-02"), sellMovement("2025-01-07")]);
+
+      expect(movements[1].date).toBe("2025-01-06");
+      expect(movements[1].amount).toBe(450);
+      expect(movements[1].stopLoss).toBeTrue();
+      expect(movements[1].blockedFrom).toBeUndefined();
+    });
+
+    it("leaves the sheet's sale alone when the stop never hits", () => {
+      const movements = createScheduler({ trackingStopPct: 50, lookbacks: [1] })
+        .apply([buyMovement("2025-01-02"), sellMovement("2025-01-07")]);
+
+      expect(movements[1]).toEqual(sellMovement("2025-01-07"));
+    });
+
+    // 01-06 breaks the stop with sales blocked, and 01-07 closes at 60, back above the
+    // stop level: nothing is sold and the position stays open.
+    it("does not sell when the price recovers while sales are blocked", () => {
+      const movements = createScheduler({ trackingStopPct: 15 })
+        .apply([buyMovement("2025-01-02"), openMovement()]);
+
+      expect(movements[1]).toEqual(openMovement());
+    });
+
+    it("keeps the position open when the stop is hit with sales blocked to the end", () => {
+      const movements = createScheduler({
+        trackingStopPct: 15,
+        indexUpTo: "2025-01-06",
+        pricesUpTo: "2025-01-06",
+      }).apply([buyMovement("2025-01-02"), openMovement()]);
+
+      expect(movements[1]).toEqual(openMovement());
+    });
+
+    it("fails when the price history starts after the purchase", () => {
+      const scheduler = createScheduler({ trackingStopPct: 15 });
+
+      expect(() => scheduler.apply([buyMovement("2025-01-01"), openMovement()])).toThrowError(
+        '"Tracking stop loss" needs the price history of AAPL from its purchase on 2025-01-01, but the '
+        + '"Prices hist" tab has no price for AAPL on or before that date.',
+      );
+    });
+
+    it("is off while the sale block is off, stop or no stop", () => {
+      const movements = [buyMovement("2025-01-02"), openMovement()];
+
+      expect(createScheduler({ trackingStopPct: 15, lookbacks: [] }).apply(movements)).toEqual(movements);
+    });
   });
 });

@@ -8,11 +8,17 @@ export class PageControlsController {
     this.pasteModeElement = documentRef.getElementById("input-paste-mode");
     this.selectAllElement = documentRef.getElementById("btn-select-all");
     this.selectNoneElement = documentRef.getElementById("btn-select-none");
+    this.saleBlockEnabledElement = documentRef.getElementById("sale-block-enabled");
+    this.saleBlockDependentElements = [
+      documentRef.getElementById("sale-block"),
+      documentRef.getElementById("tracking-stop"),
+    ].filter(Boolean);
     this.unsubscribe = null;
   }
 
   bind() {
     this.bindInputModeTabs();
+    this.bindSaleBlockToggle();
     this.bindSelectAllNone();
     this.bindStrategyFilters();
     this.syncVisibleStrategiesFromCheckboxes();
@@ -33,6 +39,26 @@ export class PageControlsController {
         const mode = tab.dataset.mode === "paste" ? "paste" : "fields";
         this.uiState.setInputMode(mode);
       });
+    });
+  }
+
+  // The lookbacks and the stop only mean anything while the block is on, so they are
+  // disabled with it instead of being read and ignored.
+  bindSaleBlockToggle() {
+    this.saleBlockEnabledElement?.addEventListener("change", () => {
+      this.syncSaleBlockFields();
+    });
+    this.syncSaleBlockFields();
+  }
+
+  syncSaleBlockFields() {
+    if (!this.saleBlockEnabledElement) {
+      return;
+    }
+
+    const enabled = Boolean(this.saleBlockEnabledElement.checked);
+    this.saleBlockDependentElements.forEach((element) => {
+      element.disabled = !enabled;
     });
   }
 

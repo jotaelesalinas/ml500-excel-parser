@@ -10,6 +10,17 @@ describe("SaleBlockLookbackParser", () => {
     expect(parser.parse(undefined)).toEqual([]);
   });
 
+  it("refuses an empty field when the block is switched on", () => {
+    const message =
+      '"Block sales S&P 500 -D" is on, so it needs at least one number of sessions. Use positive whole numbers '
+      + 'separated by commas, for example "20,50,100".';
+
+    expect(() => parser.parse("", { required: true })).toThrowError(message);
+    expect(() => parser.parse("  ", { required: true })).toThrowError(message);
+    expect(() => parser.parse(null, { required: true })).toThrowError(message);
+    expect(parser.parse("20", { required: true })).toEqual([20]);
+  });
+
   it("parses positive whole numbers separated by commas", () => {
     expect(parser.parse("20,50,100")).toEqual([20, 50, 100]);
     expect(parser.parse(" 20 , 50 ")).toEqual([20, 50]);

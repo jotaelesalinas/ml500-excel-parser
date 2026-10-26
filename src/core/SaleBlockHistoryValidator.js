@@ -1,25 +1,30 @@
-import { INDEX_HISTORY_TAB, PRICE_HISTORY_TAB, SALE_BLOCK_LABEL } from "../config/constants.js";
+import { INDEX_HISTORY_TAB, PRICE_HISTORY_TAB, SALE_BLOCK_LABEL, TRACKING_STOP_LABEL } from "../config/constants.js";
 import { FirstNFilter } from "./FirstNFilter.js";
 import { normalizeTicker } from "./PriceHistoryParser.js";
 
 const MAX_LISTED_SALES = 5;
+const MAX_LISTED_POSITIONS = 5;
 
-// Checks that the sale-block field has the history it needs before anything is
+// Checks that the sale-block fields have the history they need before anything is
 // calculated. Errors stop the calculation (no index or no price at all, so no held-back
-// sale could ever be re-priced); warnings only say what may go wrong later, such as a
-// ticker that was sold but has no price after its sale date.
+// sale could ever be re-priced, and a position the stop cannot watch from its purchase);
+// warnings only say what may go wrong later, such as a ticker that was sold but has no
+// price after its sale date.
 export class SaleBlockHistoryValidator {
   constructor({ firstNFilter = new FirstNFilter() } = {}) {
     this.firstNFilter = firstNFilter;
   }
 
-  validate({ tabs = [], firstNValues = [], lookbacks = [], history = null }) {
+  validate({ tabs = [], firstNValues = [], lookbacks = [], trackingStopPct = 0, history = null }) {
     if (!this.#isEnabled(lookbacks)) {
       return { errors: [], warnings: [] };
     }
 
     const errors = this.validateHistory({ lookbacks, history });
     const warnings = [...(history?.issues || [])];
+    if (errors.length === 0 && Number(trackingStopPct) > 0) {
+      errors.push(...this.#uncoveredPurchaseErrors(tabs, firstNValues, history));
+    }
     if (errors.length === 0) {
       warnings.push(...this.#missingSaleWarnings(tabs, firstNValues, history));
     }
@@ -68,6 +73,42 @@ export class SaleBlockHistoryValidator {
     return [...priceSeriesByTicker.values()].some((series) => series && !series.isEmpty());
   }
 
+  // The stop watches every position from its purchase, so a position whose prices start
+  // after FechaC cannot be watched at all: the calculation stops instead of measuring
+  // the maximum from a later session.
+  #uncoveredPurchaseErrors(tabs, firstNValues, history) {
+    const priceSeriesByTicker = history?.priceSeriesByTicker;
+    const uncovered = new Map();
+
+    (Array.isArray(tabs) ? tabs : []).forEach((tab) => {
+      this.#selectedPositions(tab, firstNValues).forEach(({ ticker, buyDate }) => {
+        const series = priceSeriesByTicker?.get(ticker) || null;
+        if (series && series.sessionAtOrBefore(buyDate) != null) {
+          return;
+        }
+
+        const key = `${ticker}@${buyDate}`;
+        if (!uncovered.has(key)) {
+          uncovered.set(key, { ticker, buyDate, tabName: tab?.name });
+        }
+      });
+    });
+
+    const listed = [...uncovered.values()];
+    const errors = listed.slice(0, MAX_LISTED_POSITIONS).map(
+      ({ ticker, buyDate, tabName }) =>
+        `"${TRACKING_STOP_LABEL}" needs the price history of ${ticker} from its purchase on ${buyDate} (bought in "${tabName}"), but the "${PRICE_HISTORY_TAB}" tab has no price for ${ticker} on or before that date.`,
+    );
+
+    if (listed.length > MAX_LISTED_POSITIONS) {
+      errors.push(
+        `And ${listed.length - MAX_LISTED_POSITIONS} more position(s) with no price history on their purchase date.`,
+      );
+    }
+
+    return errors;
+  }
+
   // A sale is only re-priced when the index holds it back, so a sold ticker with no
   // price after its sale date is a warning: it stops the calculation only if that day
   // turns out to be blocked.
@@ -105,6 +146,12 @@ export class SaleBlockHistoryValidator {
   }
 
   #soldPositions(tab, firstNValues) {
+    return this.#selectedPositions(tab, firstNValues)
+      .map(({ ticker, saleDate }) => ({ ticker, saleDate }))
+      .filter(({ ticker, saleDate }) => ticker !== "" && saleDate !== "");
+  }
+
+  #selectedPositions(tab, firstNValues) {
     const entries = Array.isArray(tab?.entries) ? tab.entries : [];
     const counts = Array.isArray(firstNValues) ? firstNValues.filter((value) => value > 0) : [];
     const selected = counts.length === 0
@@ -114,8 +161,9 @@ export class SaleBlockHistoryValidator {
     return selected
       .map((entry) => ({
         ticker: normalizeTicker(entry?.ticker),
+        buyDate: String(entry?.fechac ?? "").trim(),
         saleDate: String(entry?.fechav ?? "").trim(),
       }))
-      .filter(({ ticker, saleDate }) => ticker !== "" && saleDate !== "");
+      .filter(({ ticker }) => ticker !== "");
   }
 }

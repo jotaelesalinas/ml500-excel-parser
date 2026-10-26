@@ -18,6 +18,8 @@ export const INDEX_HISTORY_TAB = "Index hist";
 export const PRICE_HISTORY_TAB = "Prices hist";
 export const SALE_BLOCK_LABEL = "Block sales S&P 500 -D";
 export const SALE_BLOCK_LOOKBACKS = "20,50,100";
+export const TRACKING_STOP_LABEL = "Tracking stop loss";
+export const TRACKING_STOP_PCT = 20;
 
 export function defaultTodayProvider() {
   return new Date().toISOString().slice(0, 10);
