@@ -15,6 +15,7 @@ export class PageControlsController {
     this.bindInputModeTabs();
     this.bindSelectAllNone();
     this.bindStrategyFilters();
+    this.syncVisibleStrategiesFromCheckboxes();
     this.unsubscribe = this.uiState.subscribe((nextState, previousState) => {
       if (
         nextState.inputMode !== previousState.inputMode ||
