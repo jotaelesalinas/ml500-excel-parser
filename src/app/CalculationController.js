@@ -13,8 +13,10 @@ export class CalculationController {
     minDepositElement,
     minInvestmentElement,
     smoothNElement,
+    saleBlockElement,
     bulkInputElement,
     bulkFormInputParser,
+    saleBlockLookbackParser,
     logger = console,
   }) {
     this.spreadsheetIdExtractor = spreadsheetIdExtractor;
@@ -30,11 +32,13 @@ export class CalculationController {
     this.minDepositElement = minDepositElement;
     this.minInvestmentElement = minInvestmentElement;
     this.smoothNElement = smoothNElement;
+    this.saleBlockElement = saleBlockElement;
     this.bulkInputElement = bulkInputElement;
     this.bulkFormInputParser = bulkFormInputParser;
+    this.saleBlockLookbackParser = saleBlockLookbackParser;
     this.logger = logger;
 
-    this.loadedTabs = null;
+    this.loadedData = null;
     this.loadedCacheKey = null;
     this.pendingLoadPromise = null;
   }
@@ -69,14 +73,15 @@ export class CalculationController {
     }
 
     try {
-      const tabs = await this.ensureDataLoaded();
-      if (!tabs) {
+      const loadedData = await this.ensureDataLoaded();
+      if (!loadedData) {
         return;
       }
+      const { tabs, history } = loadedData;
       this.uiState.setProcessing(true);
       this.statusView.show(`Calculating results for ${tabs.length} tab(s)...`, "info");
       this.uiState.clearResultsSelection();
-      const results = this.portfolioResultsCalculator.calculate(tabs, firstNValues, strategy);
+      const results = this.portfolioResultsCalculator.calculate(tabs, firstNValues, strategy, history);
       this.statusView.clear();
       this.uiState.setResults(results);
     } catch (error) {
@@ -93,8 +98,8 @@ export class CalculationController {
       return null;
     }
 
-    if (this.loadedTabs && this.loadedCacheKey === context.cacheKey) {
-      return this.loadedTabs;
+    if (this.loadedData && this.loadedCacheKey === context.cacheKey) {
+      return this.loadedData;
     }
 
     return this.loadData({ forceReload: false, context });
@@ -110,8 +115,8 @@ export class CalculationController {
       return this.pendingLoadPromise;
     }
 
-    if (!forceReload && this.loadedTabs && this.loadedCacheKey === resolvedContext.cacheKey) {
-      return this.loadedTabs;
+    if (!forceReload && this.loadedData && this.loadedCacheKey === resolvedContext.cacheKey) {
+      return this.loadedData;
     }
 
     this.uiState.setProcessing(true);
@@ -124,17 +129,17 @@ export class CalculationController {
         resolvedContext.apiKey,
         (msg) => this.statusView.show(msg, "info"),
       )
-      .then((tabs) => {
-        this.loadedTabs = tabs;
+      .then((loadedData) => {
+        this.loadedData = loadedData;
         this.loadedCacheKey = resolvedContext.cacheKey;
         this.uiState.setLoadButtonLabel("Reload");
-        this.statusView.show(`Loaded ${tabs.length} tab(s).`, "info");
-        return tabs;
+        this.statusView.show(`Loaded ${loadedData.tabs.length} tab(s).`, "info");
+        return loadedData;
       })
       .catch((error) => {
         this.statusView.show(`Error: ${error.message}`, "error");
         this.logger.error(error);
-        this.loadedTabs = null;
+        this.loadedData = null;
         this.loadedCacheKey = null;
         this.uiState.setLoadButtonLabel("Load data");
         return null;
@@ -158,7 +163,7 @@ export class CalculationController {
 
     if (!urlInput) {
       this.statusView.show("Please enter a Google Sheets URL.", "error");
-      this.loadedTabs = null;
+      this.loadedData = null;
       this.loadedCacheKey = null;
       this.uiState.setLoadButtonLabel("Load data");
       return null;
@@ -166,7 +171,7 @@ export class CalculationController {
 
     if (!apiKey) {
       this.statusView.show("Please enter a Google API Key.", "error");
-      this.loadedTabs = null;
+      this.loadedData = null;
       this.loadedCacheKey = null;
       this.uiState.setLoadButtonLabel("Load data");
       return null;
@@ -177,7 +182,7 @@ export class CalculationController {
       spreadsheetId = this.spreadsheetIdExtractor.extract(urlInput);
     } catch (error) {
       this.statusView.show(error.message, "error");
-      this.loadedTabs = null;
+      this.loadedData = null;
       this.loadedCacheKey = null;
       this.uiState.setLoadButtonLabel("Load data");
       return null;
@@ -243,10 +248,21 @@ export class CalculationController {
       return null;
     }
 
+    let saleBlockLookbacks;
+    try {
+      saleBlockLookbacks = this.saleBlockLookbackParser
+        ? this.saleBlockLookbackParser.parse(this.saleBlockElement?.value)
+        : [];
+    } catch (error) {
+      this.statusView.show(error.message, "error");
+      return null;
+    }
+
     return {
       minDeposit,
       minInvestment,
       smoothN,
+      saleBlockLookbacks,
     };
   }
 

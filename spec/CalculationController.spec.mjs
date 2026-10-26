@@ -1,4 +1,5 @@
 import { CalculationController } from "../src/app/CalculationController.js";
+import { SaleBlockLookbackParser } from "../src/core/SaleBlockLookbackParser.js";
 
 describe("CalculationController", () => {
   function createController(overrides = {}) {
@@ -21,7 +22,10 @@ describe("CalculationController", () => {
         extract: jasmine.createSpy("extract").and.returnValue("sheet-id"),
       },
       processableTabsService: {
-        fetchAll: jasmine.createSpy("fetchAll").and.resolveTo([{ name: "Tab", entries: [] }]),
+        fetchAll: jasmine.createSpy("fetchAll").and.resolveTo({
+          tabs: [{ name: "Tab", entries: [] }],
+          history: { indexSeries: null, priceSeriesByTicker: new Map() },
+        }),
       },
       portfolioResultsCalculator: {
         calculate: jasmine.createSpy("calculate").and.returnValue([{ tab: "Tab" }]),
@@ -39,6 +43,7 @@ describe("CalculationController", () => {
       minDepositElement: { value: "1000" },
       minInvestmentElement: { value: "100" },
       smoothNElement: { value: "4" },
+      saleBlockElement: { value: "" },
       bulkInputElement: { value: "" },
       bulkFormInputParser: {
         parse: jasmine.createSpy("parse").and.returnValue({
@@ -51,6 +56,7 @@ describe("CalculationController", () => {
           incremental: null,
         }),
       },
+      saleBlockLookbackParser: new SaleBlockLookbackParser(),
       logger: { error: jasmine.createSpy("error") },
       ...overrides,
     };
@@ -105,7 +111,8 @@ describe("CalculationController", () => {
     expect(deps.portfolioResultsCalculator.calculate).toHaveBeenCalledWith(
       [{ name: "Tab", entries: [] }],
       [4, 10],
-      { minDeposit: 1000, minInvestment: 100, smoothN: 4 },
+      { minDeposit: 1000, minInvestment: 100, smoothN: 4, saleBlockLookbacks: [] },
+      { indexSeries: null, priceSeriesByTicker: new Map() },
     );
     expect(deps.statusView.clear).toHaveBeenCalled();
     expect(uiState.clearResultsSelection).toHaveBeenCalled();
@@ -157,7 +164,8 @@ describe("CalculationController", () => {
     expect(deps.portfolioResultsCalculator.calculate).toHaveBeenCalledWith(
       [{ name: "Tab", entries: [] }],
       [3, 8],
-      { minDeposit: 1500, minInvestment: 250, smoothN: 4 },
+      { minDeposit: 1500, minInvestment: 250, smoothN: 4, saleBlockLookbacks: [] },
+      { indexSeries: null, priceSeriesByTicker: new Map() },
     );
   });
 
@@ -176,5 +184,30 @@ describe("CalculationController", () => {
     expect(uiState.setLoadButtonLabel).toHaveBeenCalledWith("Load data");
     expect(uiState.setProcessing).toHaveBeenCalledWith(true);
     expect(uiState.setProcessing).toHaveBeenCalledWith(false);
+  });
+  it("passes the parsed sale block lookbacks to the calculator", async () => {
+    const { controller, deps } = createController({ saleBlockElement: { value: "20, 50 ,100" } });
+
+    await controller.handleCalculate();
+
+    expect(deps.portfolioResultsCalculator.calculate).toHaveBeenCalledWith(
+      [{ name: "Tab", entries: [] }],
+      [4, 10],
+      { minDeposit: 1000, minInvestment: 100, smoothN: 4, saleBlockLookbacks: [20, 50, 100] },
+      { indexSeries: null, priceSeriesByTicker: new Map() },
+    );
+  });
+
+  it("reports an invalid sale block value without calculating", async () => {
+    const { controller, deps } = createController({ saleBlockElement: { value: "20,x" } });
+
+    await controller.handleCalculate();
+
+    expect(deps.statusView.show).toHaveBeenCalledWith(
+      'Invalid "Block sales S&P 500 -D" value: "20,x". Use positive whole numbers separated by commas, for example "20,50,100".',
+      "error",
+    );
+    expect(deps.portfolioResultsCalculator.calculate).not.toHaveBeenCalled();
+    expect(deps.processableTabsService.fetchAll).not.toHaveBeenCalled();
   });
 });

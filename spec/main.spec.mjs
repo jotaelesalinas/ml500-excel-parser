@@ -17,6 +17,7 @@ describe("bootstrap", () => {
           "min-deposit": {},
           "min-investment": {},
           "smooth-n": {},
+          "sale-block": {},
           "bulk-input": {},
         };
         return elements[id] || null;
@@ -78,6 +79,9 @@ describe("bootstrap", () => {
       WeightedAgeCalculator: class {},
       PortfolioResultsCalculator: class { constructor() {} },
       BulkFormInputParser: class {},
+      IndexHistoryParser: class {},
+      PriceHistoryParser: class {},
+      SaleBlockLookbackParser: class {},
       createUiState: () => uiState,
     });
 

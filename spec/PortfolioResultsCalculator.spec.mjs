@@ -1,4 +1,5 @@
 import { PortfolioResultsCalculator } from "../src/services/PortfolioResultsCalculator.js";
+import { SessionSeries } from "../src/core/SessionSeries.js";
 
 describe("PortfolioResultsCalculator", () => {
   function byStrat(results, strat) {
@@ -535,5 +536,125 @@ describe("PortfolioResultsCalculator", () => {
     expect(result.closed).toBeFalse();
     expect(result.asOf).toBe("2026-09-03");
     expect(result.log[result.log.length - 1].action).toBe("Final snapshot");
+  });
+  describe("blocked sales", () => {
+    // 2025-01-03 is 10% below 2025-01-01 and 2025-01-06 is 5% below 2025-01-02, so with
+    // a 2-session lookback both days hold sales back; 2025-01-07 lets them through.
+    const indexSeries = new SessionSeries([
+      { date: "2025-01-01", value: 100 },
+      { date: "2025-01-02", value: 100 },
+      { date: "2025-01-03", value: 90 },
+      { date: "2025-01-06", value: 95 },
+      { date: "2025-01-07", value: 110 },
+    ]);
+
+    const history = {
+      indexSeries,
+      priceSeriesByTicker: new Map([
+        [
+          "AAPL",
+          new SessionSeries([
+            { date: "2025-01-06", value: 45 },
+            { date: "2025-01-07", value: 60 },
+          ]),
+        ],
+      ]),
+    };
+
+    function createCalculator() {
+      return new PortfolioResultsCalculator({
+        firstNFilter: { filter: (entries) => entries },
+        movementMapper: {
+          map: () => [
+            { action: "buy", date: "2025-01-02", ticker: "AAPL", qty: 10, amount: 1000, positionId: 1 },
+            { action: "sell", date: "2025-01-03", ticker: "AAPL", qty: 10, amount: 500, positionId: 1 },
+          ],
+        },
+        xirrCalculator: { calculate: () => 0.1 },
+        weightedAgeCalculator: { calculate: () => 1 },
+        logger: { warn: () => {} },
+        minDeposit: 1000,
+        minInvestment: 100,
+        todayProvider: () => "2025-01-09",
+      });
+    }
+
+    function sellRow(result) {
+      return result.log.find((row) => row.action.startsWith("Sell "));
+    }
+
+    it("sells on the original date when the field is empty", () => {
+      const results = createCalculator().calculate(
+        [{ name: "Tab A", entries: [{ ticker: "AAPL" }] }],
+        [4],
+        { saleBlockLookbacks: [] },
+        history,
+      );
+
+      const result = byStrat(results, "Fixed D");
+      expect(sellRow(result)).toEqual(jasmine.objectContaining({
+        date: "2025-01-03",
+        action: "Sell AAPL",
+        amount: 50,
+      }));
+      expect(result.asOf).toBe("2025-01-03");
+    });
+
+    it("delays the sale to the first unblocked session, at that session's price", () => {
+      const results = createCalculator().calculate(
+        [{ name: "Tab A", entries: [{ ticker: "AAPL" }] }],
+        [4],
+        { saleBlockLookbacks: [2] },
+        history,
+      );
+
+      const result = byStrat(results, "Fixed D");
+      // The buy invested 100 of a 1000 position, so the sale is scaled by 0.1:
+      // 10 shares at 60 on 2025-01-07 instead of 10 at 50 on 2025-01-03.
+      expect(sellRow(result)).toEqual(jasmine.objectContaining({
+        date: "2025-01-07",
+        action: "Sell AAPL (held from 2025-01-03)",
+        amount: 60,
+      }));
+      expect(result.saleCash).toBe(60);
+      expect(result.closed).toBeTrue();
+      expect(result.asOf).toBe("2025-01-07");
+    });
+
+    it("keeps the position open when the sale never unblocks", () => {
+      const results = createCalculator().calculate(
+        [{ name: "Tab A", entries: [{ ticker: "AAPL" }] }],
+        [4],
+        { saleBlockLookbacks: [2] },
+        {
+          indexSeries: new SessionSeries(indexSeries.sessions.filter((session) => session.date <= "2025-01-06")),
+          priceSeriesByTicker: new Map([["AAPL", new SessionSeries([{ date: "2025-01-06", value: 45 }])]]),
+        },
+      );
+
+      const result = byStrat(results, "Fixed D");
+      expect(sellRow(result)).toBeUndefined();
+      expect(result.closed).toBeFalse();
+      expect(result.asOf).toBe("2025-01-09");
+      expect(result.saleCash).toBe(0);
+      // 10 shares at 45, scaled by the 0.1 the buy was scaled with.
+      expect(result.invested).toBe(45);
+    });
+
+    it("fails when the lookbacks are set but the index history is missing", () => {
+      const calculator = createCalculator();
+      const message =
+        '"Block sales S&P 500 -D" needs the index history: add an "Index hist" tab to the spreadsheet, or clear the field.';
+
+      expect(() =>
+        calculator.calculate([{ name: "Tab A", entries: [] }], [4], { saleBlockLookbacks: [2] }, null),
+      ).toThrowError(message);
+      expect(() =>
+        calculator.calculate([{ name: "Tab A", entries: [] }], [4], { saleBlockLookbacks: [2] }, {
+          indexSeries: new SessionSeries([]),
+          priceSeriesByTicker: new Map(),
+        }),
+      ).toThrowError(message);
+    });
   });
 });

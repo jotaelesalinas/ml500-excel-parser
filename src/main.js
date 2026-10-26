@@ -3,6 +3,9 @@ import { SpreadsheetIdExtractor } from "./core/SpreadsheetIdExtractor.js";
 import { GoogleSheetsApiClient } from "./core/GoogleSheetsApiClient.js";
 import { SheetRowParser } from "./core/SheetRowParser.js";
 import { SheetHeaderValidator } from "./core/SheetHeaderValidator.js";
+import { IndexHistoryParser } from "./core/IndexHistoryParser.js";
+import { PriceHistoryParser } from "./core/PriceHistoryParser.js";
+import { SaleBlockLookbackParser } from "./core/SaleBlockLookbackParser.js";
 import { ProcessableTabsService } from "./services/ProcessableTabsService.js";
 import { FirstNFilter } from "./core/FirstNFilter.js";
 import { PortfolioMovementMapper } from "./core/PortfolioMovementMapper.js";
@@ -52,6 +55,9 @@ export function bootstrap(documentRef = document, overrides = {}) {
     GoogleSheetsApiClient: GoogleSheetsApiClientClass = GoogleSheetsApiClient,
     SheetRowParser: SheetRowParserClass = SheetRowParser,
     SheetHeaderValidator: SheetHeaderValidatorClass = SheetHeaderValidator,
+    IndexHistoryParser: IndexHistoryParserClass = IndexHistoryParser,
+    PriceHistoryParser: PriceHistoryParserClass = PriceHistoryParser,
+    SaleBlockLookbackParser: SaleBlockLookbackParserClass = SaleBlockLookbackParser,
     ProcessableTabsService: ProcessableTabsServiceClass = ProcessableTabsService,
     FirstNFilter: FirstNFilterClass = FirstNFilter,
     PortfolioMovementMapper: PortfolioMovementMapperClass = PortfolioMovementMapper,
@@ -74,6 +80,8 @@ export function bootstrap(documentRef = document, overrides = {}) {
     sheetsApiClient,
     headerValidator,
     rowParser,
+    indexHistoryParser: new IndexHistoryParserClass(),
+    priceHistoryParser: new PriceHistoryParserClass(),
   });
 
   const portfolioResultsCalculator = new PortfolioResultsCalculatorClass({
@@ -98,8 +106,10 @@ export function bootstrap(documentRef = document, overrides = {}) {
     minDepositElement: documentRef.getElementById("min-deposit"),
     minInvestmentElement: documentRef.getElementById("min-investment"),
     smoothNElement: documentRef.getElementById("smooth-n"),
+    saleBlockElement: documentRef.getElementById("sale-block"),
     bulkInputElement: documentRef.getElementById("bulk-input"),
     bulkFormInputParser: new BulkFormInputParserClass(),
+    saleBlockLookbackParser: new SaleBlockLookbackParserClass(),
   });
 
   new ResultsTableViewClass(documentRef.getElementById("results"), uiState);

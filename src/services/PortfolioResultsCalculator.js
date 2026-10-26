@@ -1,5 +1,6 @@
-import { MIN_DEPOSIT, MIN_INVESTMENT, defaultTodayProvider } from "../config/constants.js";
+import { INDEX_HISTORY_TAB, MIN_DEPOSIT, MIN_INVESTMENT, SALE_BLOCK_LABEL, defaultTodayProvider } from "../config/constants.js";
 import { WeeklyInvestmentPolicy } from "../core/WeeklyInvestmentPolicy.js";
+import { BlockedSaleScheduler } from "../core/BlockedSaleScheduler.js";
 
 export class PortfolioResultsCalculator {
   constructor({
@@ -12,6 +13,7 @@ export class PortfolioResultsCalculator {
     minInvestment = MIN_INVESTMENT,
     weeklyInvestmentPolicy = new WeeklyInvestmentPolicy(),
     todayProvider = defaultTodayProvider,
+    blockedSaleSchedulerFactory = (config) => new BlockedSaleScheduler(config),
   }) {
     this.firstNFilter = firstNFilter;
     this.movementMapper = movementMapper;
@@ -22,12 +24,14 @@ export class PortfolioResultsCalculator {
     this.minInvestment = minInvestment;
     this.weeklyInvestmentPolicy = weeklyInvestmentPolicy;
     this.todayProvider = todayProvider;
+    this.blockedSaleSchedulerFactory = blockedSaleSchedulerFactory;
   }
 
-  calculate(tabs, firstNValues, strategy = {}) {
+  calculate(tabs, firstNValues, strategy = {}, history = null) {
     const configuredMinDeposit = this.#toPositiveAmount(strategy.minDeposit, this.minDeposit);
     const configuredMinInvestment = this.#toPositiveAmount(strategy.minInvestment, this.minInvestment);
     const configuredSmoothN = this.#toPositiveAmount(strategy.smoothN, 4);
+    const saleBlockScheduler = this.#buildSaleBlockScheduler(strategy.saleBlockLookbacks, history);
     const strategyVariants = [
       { strat: "Fixed D" },
       { strat: "Fixed S|D" },
@@ -47,7 +51,8 @@ export class PortfolioResultsCalculator {
         strategyVariants.forEach(({ strat }) => {
           const tabName = tabData.name;
           const entries = this.firstNFilter.filter(tabData.entries, firstN);
-          const movements = entries.flatMap((entry) => this.movementMapper.map(entry));
+          const mappedMovements = entries.flatMap((entry) => this.movementMapper.map(entry));
+          const movements = saleBlockScheduler ? saleBlockScheduler.apply(mappedMovements) : mappedMovements;
           const dates = [...new Set(movements.map((movement) => movement.date))].sort();
 
           const moneyIn = [];
@@ -172,7 +177,9 @@ export class PortfolioResultsCalculator {
               lastSaleDate = date;
               addLogRow({
                 date,
-                action: `Sell ${movement.ticker}`,
+                action: movement.blockedFrom
+                  ? `Sell ${movement.ticker} (held from ${movement.blockedFrom})`
+                  : `Sell ${movement.ticker}`,
                 qty: scaledQty > 0 ? scaledQty : null,
                 amount: scaledAmount,
               });
@@ -293,6 +300,28 @@ export class PortfolioResultsCalculator {
     }
 
     return results;
+  }
+
+  // Returns null when the feature is off, so the mapped movements are used as they are.
+  #buildSaleBlockScheduler(rawLookbacks, history) {
+    const lookbacks = Array.isArray(rawLookbacks) ? rawLookbacks : [];
+    if (lookbacks.length === 0) {
+      return null;
+    }
+
+    const indexSeries = history?.indexSeries;
+    if (!indexSeries || indexSeries.isEmpty()) {
+      throw new Error(
+        `"${SALE_BLOCK_LABEL}" needs the index history: add an "${INDEX_HISTORY_TAB}" tab to the spreadsheet, or clear the field.`,
+      );
+    }
+
+    return this.blockedSaleSchedulerFactory({
+      indexSeries,
+      priceSeriesByTicker: history.priceSeriesByTicker || new Map(),
+      lookbacks,
+      todayProvider: this.todayProvider,
+    });
   }
 
   #scaledAmount(movement, buyScaleByPositionId) {
