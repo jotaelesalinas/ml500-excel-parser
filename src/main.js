@@ -6,6 +6,7 @@ import { SheetHeaderValidator } from "./core/SheetHeaderValidator.js";
 import { IndexHistoryParser } from "./core/IndexHistoryParser.js";
 import { PriceHistoryParser } from "./core/PriceHistoryParser.js";
 import { SaleBlockLookbackParser } from "./core/SaleBlockLookbackParser.js";
+import { SaleBlockHistoryValidator } from "./core/SaleBlockHistoryValidator.js";
 import { ProcessableTabsService } from "./services/ProcessableTabsService.js";
 import { FirstNFilter } from "./core/FirstNFilter.js";
 import { PortfolioMovementMapper } from "./core/PortfolioMovementMapper.js";
@@ -58,6 +59,7 @@ export function bootstrap(documentRef = document, overrides = {}) {
     IndexHistoryParser: IndexHistoryParserClass = IndexHistoryParser,
     PriceHistoryParser: PriceHistoryParserClass = PriceHistoryParser,
     SaleBlockLookbackParser: SaleBlockLookbackParserClass = SaleBlockLookbackParser,
+    SaleBlockHistoryValidator: SaleBlockHistoryValidatorClass = SaleBlockHistoryValidator,
     ProcessableTabsService: ProcessableTabsServiceClass = ProcessableTabsService,
     FirstNFilter: FirstNFilterClass = FirstNFilter,
     PortfolioMovementMapper: PortfolioMovementMapperClass = PortfolioMovementMapper,
@@ -110,6 +112,7 @@ export function bootstrap(documentRef = document, overrides = {}) {
     bulkInputElement: documentRef.getElementById("bulk-input"),
     bulkFormInputParser: new BulkFormInputParserClass(),
     saleBlockLookbackParser: new SaleBlockLookbackParserClass(),
+    saleBlockHistoryValidator: new SaleBlockHistoryValidatorClass(),
   });
 
   new ResultsTableViewClass(documentRef.getElementById("results"), uiState);

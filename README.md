@@ -122,6 +122,32 @@ once they are computed — hundreds of live GOOGLEFINANCE formulas are slow and 
 If a held-back sale reaches a session with no price for that ticker, the calculation
 stops with an error naming the ticker and the date instead of guessing a price.
 
+### What the app checks
+
+Nothing is read on a best-effort basis: whatever does not look like the layout above is
+reported instead of silently ignored.
+
+**After loading**, the status line lists every warning found while reading the
+spreadsheet, and the browser console repeats them one by one:
+
+- a tab skipped because row 1 does not hold the required headers (`ticker`, `nombre`,
+  `fechac`, `cantidad`, `precioc`);
+- a missing `Index hist` or `Prices hist` tab;
+- a history tab that is empty, or whose row 1 does not hold the expected columns;
+- a row whose `Fecha` is not a `YYYY-MM-DD` date, or a cell that holds something other
+  than a number where a price or an index value is expected (`#N/A` and empty cells are
+  expected absences and are never reported);
+- a ticker column with no price at all.
+
+Repeated problems of the same kind are capped at five lines and then counted, so one
+badly pasted column does not flood the status line.
+
+**On Calculate**, with **Block sales S&P 500 -D** in use, the same warnings are shown
+again, plus one per sale that has no price after its `FechaV` — the sales that would stop
+the calculation if the index held them back. Two cases are errors instead, and no result
+is calculated: the index history is missing or unreadable, and the price history is
+missing or unreadable. Clear the field to calculate without any history.
+
 ## Investment allocation rules
 
 The app calculates three strategies for every Top N + tab combination:

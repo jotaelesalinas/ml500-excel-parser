@@ -320,7 +320,7 @@ label[for="smooth-n"] {
 }
 
 /* Status */
-.error, .info {
+.error, .info, .warning {
   margin-top: 1.5rem;
   padding: 0.75rem 1rem;
   border-radius: var(--bs-border-radius);
@@ -330,6 +330,7 @@ label[for="smooth-n"] {
 }
 .error { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
 .info  { background: #fdf8f0; color: #92400e; border-color: #e6c3b7; }
+.warning { background: #fffbeb; color: #854d0e; border-color: #fcd34d; }
 
 /* Results area */
 #results { margin-top: 1.5rem; }

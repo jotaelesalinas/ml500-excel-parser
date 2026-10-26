@@ -17,6 +17,7 @@ export class CalculationController {
     bulkInputElement,
     bulkFormInputParser,
     saleBlockLookbackParser,
+    saleBlockHistoryValidator = null,
     logger = console,
   }) {
     this.spreadsheetIdExtractor = spreadsheetIdExtractor;
@@ -36,6 +37,7 @@ export class CalculationController {
     this.bulkInputElement = bulkInputElement;
     this.bulkFormInputParser = bulkFormInputParser;
     this.saleBlockLookbackParser = saleBlockLookbackParser;
+    this.saleBlockHistoryValidator = saleBlockHistoryValidator;
     this.logger = logger;
 
     this.loadedData = null;
@@ -78,11 +80,16 @@ export class CalculationController {
         return;
       }
       const { tabs, history } = loadedData;
+      const { errors, warnings } = this.#validateHistory(tabs, firstNValues, strategy, history);
+      if (errors.length > 0) {
+        throw new Error(errors.join(" "));
+      }
+
       this.uiState.setProcessing(true);
       this.statusView.show(`Calculating results for ${tabs.length} tab(s)...`, "info");
       this.uiState.clearResultsSelection();
       const results = this.portfolioResultsCalculator.calculate(tabs, firstNValues, strategy, history);
-      this.statusView.clear();
+      this.#showWarnings(warnings);
       this.uiState.setResults(results);
     } catch (error) {
       this.statusView.show(`Error: ${error.message}`, "error");
@@ -133,7 +140,7 @@ export class CalculationController {
         this.loadedData = loadedData;
         this.loadedCacheKey = resolvedContext.cacheKey;
         this.uiState.setLoadButtonLabel("Reload");
-        this.statusView.show(`Loaded ${loadedData.tabs.length} tab(s).`, "info");
+        this.#showLoadReport(loadedData);
         return loadedData;
       })
       .catch((error) => {
@@ -264,6 +271,42 @@ export class CalculationController {
       smoothN,
       saleBlockLookbacks,
     };
+  }
+
+  #validateHistory(tabs, firstNValues, strategy, history) {
+    if (!this.saleBlockHistoryValidator) {
+      return { errors: [], warnings: [] };
+    }
+
+    return this.saleBlockHistoryValidator.validate({
+      tabs,
+      firstNValues,
+      lookbacks: strategy.saleBlockLookbacks,
+      history,
+    });
+  }
+
+  // What the spreadsheet looks like is reported right after loading, so a tab that is
+  // missing or in the wrong format is visible before any calculation is asked for.
+  #showLoadReport(loadedData) {
+    const issues = loadedData?.history?.issues || [];
+    const loaded = `Loaded ${loadedData.tabs.length} tab(s).`;
+    if (issues.length === 0) {
+      this.statusView.show(loaded, "info");
+      return;
+    }
+
+    this.statusView.show(`${loaded} ${issues.length} warning(s): ${issues.join(" ")}`, "warning");
+  }
+
+  #showWarnings(warnings) {
+    if (warnings.length === 0) {
+      this.statusView.clear();
+      return;
+    }
+
+    warnings.forEach((warning) => this.logger.warn(warning));
+    this.statusView.show(`${warnings.length} warning(s): ${warnings.join(" ")}`, "warning");
   }
 
   #parsePositiveNumber(rawValue, validationMessage) {

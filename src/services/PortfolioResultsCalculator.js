@@ -1,6 +1,7 @@
-import { INDEX_HISTORY_TAB, MIN_DEPOSIT, MIN_INVESTMENT, SALE_BLOCK_LABEL, defaultTodayProvider } from "../config/constants.js";
+import { MIN_DEPOSIT, MIN_INVESTMENT, defaultTodayProvider } from "../config/constants.js";
 import { WeeklyInvestmentPolicy } from "../core/WeeklyInvestmentPolicy.js";
 import { BlockedSaleScheduler } from "../core/BlockedSaleScheduler.js";
+import { SaleBlockHistoryValidator } from "../core/SaleBlockHistoryValidator.js";
 
 export class PortfolioResultsCalculator {
   constructor({
@@ -14,6 +15,7 @@ export class PortfolioResultsCalculator {
     weeklyInvestmentPolicy = new WeeklyInvestmentPolicy(),
     todayProvider = defaultTodayProvider,
     blockedSaleSchedulerFactory = (config) => new BlockedSaleScheduler(config),
+    saleBlockHistoryValidator = new SaleBlockHistoryValidator(),
   }) {
     this.firstNFilter = firstNFilter;
     this.movementMapper = movementMapper;
@@ -25,6 +27,7 @@ export class PortfolioResultsCalculator {
     this.weeklyInvestmentPolicy = weeklyInvestmentPolicy;
     this.todayProvider = todayProvider;
     this.blockedSaleSchedulerFactory = blockedSaleSchedulerFactory;
+    this.saleBlockHistoryValidator = saleBlockHistoryValidator;
   }
 
   calculate(tabs, firstNValues, strategy = {}, history = null) {
@@ -309,15 +312,13 @@ export class PortfolioResultsCalculator {
       return null;
     }
 
-    const indexSeries = history?.indexSeries;
-    if (!indexSeries || indexSeries.isEmpty()) {
-      throw new Error(
-        `"${SALE_BLOCK_LABEL}" needs the index history: add an "${INDEX_HISTORY_TAB}" tab to the spreadsheet, or clear the field.`,
-      );
+    const errors = this.saleBlockHistoryValidator.validateHistory({ lookbacks, history });
+    if (errors.length > 0) {
+      throw new Error(errors.join(" "));
     }
 
     return this.blockedSaleSchedulerFactory({
-      indexSeries,
+      indexSeries: history.indexSeries,
       priceSeriesByTicker: history.priceSeriesByTicker || new Map(),
       lookbacks,
       todayProvider: this.todayProvider,

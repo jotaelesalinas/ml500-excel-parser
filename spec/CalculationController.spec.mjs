@@ -1,5 +1,22 @@
 import { CalculationController } from "../src/app/CalculationController.js";
 import { SaleBlockLookbackParser } from "../src/core/SaleBlockLookbackParser.js";
+import { SaleBlockHistoryValidator } from "../src/core/SaleBlockHistoryValidator.js";
+import { SessionSeries } from "../src/core/SessionSeries.js";
+
+// A history with the two tabs read and a price after the only sale date, i.e. nothing
+// for the sale-block validator to complain about.
+function usableHistory() {
+  return {
+    indexSeries: new SessionSeries([
+      { date: "2025-01-02", value: 100 },
+      { date: "2025-01-03", value: 90 },
+    ]),
+    priceSeriesByTicker: new Map([["AAPL", new SessionSeries([{ date: "2025-01-06", value: 45 }])]]),
+    hasIndexTab: true,
+    hasPricesTab: true,
+    issues: [],
+  };
+}
 
 describe("CalculationController", () => {
   function createController(overrides = {}) {
@@ -57,7 +74,8 @@ describe("CalculationController", () => {
         }),
       },
       saleBlockLookbackParser: new SaleBlockLookbackParser(),
-      logger: { error: jasmine.createSpy("error") },
+      saleBlockHistoryValidator: new SaleBlockHistoryValidator(),
+      logger: { error: jasmine.createSpy("error"), warn: jasmine.createSpy("warn") },
       ...overrides,
     };
 
@@ -186,7 +204,16 @@ describe("CalculationController", () => {
     expect(uiState.setProcessing).toHaveBeenCalledWith(false);
   });
   it("passes the parsed sale block lookbacks to the calculator", async () => {
-    const { controller, deps } = createController({ saleBlockElement: { value: "20, 50 ,100" } });
+    const history = usableHistory();
+    const { controller, deps } = createController({
+      saleBlockElement: { value: "20, 50 ,100" },
+      processableTabsService: {
+        fetchAll: jasmine.createSpy("fetchAll").and.resolveTo({
+          tabs: [{ name: "Tab", entries: [] }],
+          history,
+        }),
+      },
+    });
 
     await controller.handleCalculate();
 
@@ -194,8 +221,9 @@ describe("CalculationController", () => {
       [{ name: "Tab", entries: [] }],
       [4, 10],
       { minDeposit: 1000, minInvestment: 100, smoothN: 4, saleBlockLookbacks: [20, 50, 100] },
-      { indexSeries: null, priceSeriesByTicker: new Map() },
+      history,
     );
+    expect(deps.statusView.clear).toHaveBeenCalled();
   });
 
   it("reports an invalid sale block value without calculating", async () => {
@@ -209,5 +237,72 @@ describe("CalculationController", () => {
     );
     expect(deps.portfolioResultsCalculator.calculate).not.toHaveBeenCalled();
     expect(deps.processableTabsService.fetchAll).not.toHaveBeenCalled();
+  });
+
+  it("refuses to calculate when the sale block is on but the history tabs are missing", async () => {
+    const { controller, deps } = createController({ saleBlockElement: { value: "20" } });
+
+    await controller.handleCalculate();
+
+    expect(deps.statusView.show).toHaveBeenCalledWith(
+      'Error: "Block sales S&P 500 -D" needs the index history: add an "Index hist" tab to the spreadsheet, '
+        + 'or clear the field. "Block sales S&P 500 -D" needs the price history: add a "Prices hist" tab to '
+        + "the spreadsheet, or clear the field.",
+      "error",
+    );
+    expect(deps.portfolioResultsCalculator.calculate).not.toHaveBeenCalled();
+  });
+
+  it("keeps the warnings on screen after calculating", async () => {
+    const history = usableHistory();
+    history.issues = ['"Prices hist": the MSFT column has no price at all.'];
+    const { controller, deps, uiState } = createController({
+      saleBlockElement: { value: "20" },
+      processableTabsService: {
+        fetchAll: jasmine.createSpy("fetchAll").and.resolveTo({
+          tabs: [{ name: "Tab", entries: [{ ticker: "MSFT", fechac: "2025-01-02", fechav: "2025-01-03" }] }],
+          history,
+        }),
+      },
+    });
+
+    await controller.handleCalculate();
+
+    expect(uiState.setResults).toHaveBeenCalledWith([{ tab: "Tab" }]);
+    expect(deps.statusView.clear).not.toHaveBeenCalled();
+    expect(deps.statusView.show).toHaveBeenCalledWith(
+      '2 warning(s): "Prices hist": the MSFT column has no price at all. The "Prices hist" tab has no price '
+        + 'for MSFT after 2025-01-03 (sold in "Tab"), so the calculation stops if that sale is held back.',
+      "warning",
+    );
+    expect(deps.logger.warn).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports what the spreadsheet looks like right after loading", async () => {
+    const history = usableHistory();
+    history.issues = ['Skipped the "Notes" tab: row 1 does not hold the required headers (ticker).'];
+    const { controller, deps } = createController({
+      processableTabsService: {
+        fetchAll: jasmine.createSpy("fetchAll").and.resolveTo({
+          tabs: [{ name: "Tab", entries: [] }],
+          history,
+        }),
+      },
+    });
+
+    await controller.handleLoadButton();
+
+    expect(deps.statusView.show).toHaveBeenCalledWith(
+      'Loaded 1 tab(s). 1 warning(s): Skipped the "Notes" tab: row 1 does not hold the required headers (ticker).',
+      "warning",
+    );
+  });
+
+  it("reports a clean load as usual", async () => {
+    const { controller, deps } = createController();
+
+    await controller.handleLoadButton();
+
+    expect(deps.statusView.show).toHaveBeenCalledWith("Loaded 1 tab(s).", "info");
   });
 });

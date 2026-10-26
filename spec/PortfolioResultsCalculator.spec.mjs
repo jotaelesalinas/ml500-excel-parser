@@ -641,20 +641,29 @@ describe("PortfolioResultsCalculator", () => {
       expect(result.invested).toBe(45);
     });
 
-    it("fails when the lookbacks are set but the index history is missing", () => {
+    it("fails when the lookbacks are set but the history is missing", () => {
       const calculator = createCalculator();
-      const message =
+      const indexMissing =
         '"Block sales S&P 500 -D" needs the index history: add an "Index hist" tab to the spreadsheet, or clear the field.';
+      const pricesMissing =
+        '"Block sales S&P 500 -D" needs the price history: add a "Prices hist" tab to the spreadsheet, or clear the field.';
+      const tabs = [{ name: "Tab A", entries: [] }];
 
+      expect(() => calculator.calculate(tabs, [4], { saleBlockLookbacks: [2] }, null)).toThrowError(
+        `${indexMissing} ${pricesMissing}`,
+      );
       expect(() =>
-        calculator.calculate([{ name: "Tab A", entries: [] }], [4], { saleBlockLookbacks: [2] }, null),
-      ).toThrowError(message);
-      expect(() =>
-        calculator.calculate([{ name: "Tab A", entries: [] }], [4], { saleBlockLookbacks: [2] }, {
+        calculator.calculate(tabs, [4], { saleBlockLookbacks: [2] }, {
           indexSeries: new SessionSeries([]),
           priceSeriesByTicker: new Map(),
         }),
-      ).toThrowError(message);
+      ).toThrowError(`${indexMissing} ${pricesMissing}`);
+      expect(() =>
+        calculator.calculate(tabs, [4], { saleBlockLookbacks: [2] }, {
+          indexSeries,
+          priceSeriesByTicker: new Map(),
+        }),
+      ).toThrowError(pricesMissing);
     });
   });
 });

@@ -36,3 +36,23 @@ export function normalizeSheetHeader(rawHeader) {
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "");
 }
+
+// Cells with nothing to read: an empty cell, or the "#N/A" GOOGLEFINANCE leaves on a day
+// the ticker did not quote. Anything else that cannot be parsed (a locale-formatted
+// number, a note, another formula error) is a data problem worth reporting.
+export function isEmptyOrNotAvailable(rawValue) {
+  const text = String(rawValue ?? "").trim();
+  return text === "" || /^#?n\/a$/i.test(text);
+}
+
+// How an unexpected cell is named in a warning.
+export function describeSheetCell(rawValue) {
+  const text = String(rawValue ?? "").trim();
+  return text === "" ? "an empty cell" : `"${text}"`;
+}
+
+// True when the row has no content at all, i.e. it is just spreadsheet padding and not
+// worth complaining about.
+export function isEmptySheetRow(row) {
+  return !Array.isArray(row) || row.every((cell) => String(cell ?? "").trim() === "");
+}
