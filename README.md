@@ -102,20 +102,22 @@ row (one per year) and extra columns are ignored:
 
 ### `Prices hist`
 
-One **pair of columns per ticker**, which is what a single
-`=GOOGLEFINANCE("AAPL","close",start,TODAY(),"DAILY")` call spills into the sheet. Row 1
-carries the ticker above each pair:
+One **calendar-day row** and one **column per ticker**, with the ticker in row 1. The
+`Fecha` column is shared by every ticker and is found by header, so the `Día` weekday
+helper next to it and the `_SAMPLE_` template column are ignored:
 
-| AAPL | | MSFT | |
-|------|---|------|---|
-| `2025-04-03` | `203.19` | `2025-04-03` | `373.11` |
-| `2025-04-04` | `188.38` | `2025-04-04` | `359.84` |
+| Fecha | Día | _SAMPLE_ | A | AAPL |
+|-------|-----|----------|---|------|
+| `2023-01-01` | Sun | `#N/A` | `#N/A` | `#N/A` |
+| `2023-01-03` | Tue | `#N/A` | `150.04` | `125.07` |
+| `2023-01-04` | Wed | `#N/A` | `151.67` | `126.36` |
 
 Only tickers that were sold (`FechaV` set) can ever be held back, so only those need a
-column pair, and only from their earliest `FechaV` onwards. Dates must be `YYYY-MM-DD`;
-rows without a usable date or price (`#N/A`, the `Date`/`Close` header GOOGLEFINANCE
-adds) are skipped. Paste the result as values once it is computed — hundreds of live
-GOOGLEFINANCE formulas are slow and return `#N/A` under rate limiting.
+column, and only from their earliest `FechaV` onwards. Dates must be `YYYY-MM-DD`; cells
+without a usable price (`#N/A` on weekends, holidays and days outside the ticker's
+history) are skipped, so each ticker keeps its own sessions. Paste the prices as values
+once they are computed — hundreds of live GOOGLEFINANCE formulas are slow and return
+`#N/A` under rate limiting.
 
 If a held-back sale reaches a session with no price for that ticker, the calculation
 stops with an error naming the ticker and the date instead of guessing a price.

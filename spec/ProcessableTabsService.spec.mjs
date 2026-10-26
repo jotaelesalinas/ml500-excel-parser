@@ -70,7 +70,7 @@ describe("ProcessableTabsService", () => {
     const rowsByTab = {
       Valid: [["Valid"], ["row"]],
       "Index hist": [["Ticker", "Fecha", "Valor"], ["INDEXSP:.INX", "2025-01-02", "5,868.55"]],
-      "prices HIST": [["AAPL", ""], ["2025-01-02", "243.85"]],
+      "prices HIST": [["Fecha", "Día", "AAPL"], ["2025-01-02", "Thu", "243.85"]],
     };
 
     const sheetsApiClient = {

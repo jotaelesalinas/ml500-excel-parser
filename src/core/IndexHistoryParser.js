@@ -1,13 +1,5 @@
 import { SessionSeries } from "./SessionSeries.js";
-import { parseSheetDate, parseSheetNumber } from "./sheetValues.js";
-
-function normalizeHeader(rawHeader) {
-  return String(rawHeader ?? "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
-}
+import { normalizeSheetHeader, parseSheetDate, parseSheetNumber } from "./sheetValues.js";
 
 // Reads the index history tab, where the same year-by-year block repeats across the
 // row: a date column, an optional weekday column and a value column. Columns are
@@ -19,7 +11,7 @@ export class IndexHistoryParser {
       return new SessionSeries([]);
     }
 
-    const headers = (rows[0] || []).map(normalizeHeader);
+    const headers = (rows[0] || []).map(normalizeSheetHeader);
     const columnPairs = this.#findColumnPairs(headers);
     const sessions = [];
 

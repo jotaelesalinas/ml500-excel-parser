@@ -26,3 +26,13 @@ export function parseSheetDate(rawValue) {
   const match = ISO_DATE_PREFIX.exec(String(rawValue).trim());
   return match ? match[1] : null;
 }
+
+// Header cells are compared case- and accent-insensitively, so "Día", "DIA" and "dia"
+// all name the same column.
+export function normalizeSheetHeader(rawHeader) {
+  return String(rawHeader ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
+}
