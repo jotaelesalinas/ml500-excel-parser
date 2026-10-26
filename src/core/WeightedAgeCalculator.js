@@ -5,7 +5,7 @@ export class WeightedAgeCalculator {
     this.todayProvider = todayProvider;
   }
 
-  calculate(flows) {
+  calculate(flows, referenceDate) {
     const parsed = flows
       .map((flow) => ({
         amount: Number(flow.amount),
@@ -21,9 +21,12 @@ export class WeightedAgeCalculator {
     }
 
     const dayMs = 86400000;
-    const todayDate = new Date(this.todayProvider());
+    const asOfDate = new Date(referenceDate ?? this.todayProvider());
+    if (Number.isNaN(asOfDate.getTime())) {
+      throw new Error("Invalid reference date.");
+    }
     const weightedAgeSum = parsed.reduce(
-      (sum, flow) => sum + ((todayDate - flow.date) / dayMs / 365.25) * flow.amount,
+      (sum, flow) => sum + ((asOfDate - flow.date) / dayMs / 365.25) * flow.amount,
       0,
     );
     const amountSum = parsed.reduce((sum, flow) => sum + flow.amount, 0);

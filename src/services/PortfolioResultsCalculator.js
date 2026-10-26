@@ -64,6 +64,7 @@ export class PortfolioResultsCalculator {
           let valueToday = 0;
           let trackedDeposited = 0;
           let trackedInvested = 0;
+          let lastSaleDate = null;
 
           const addLogRow = ({ date, action, qty = null, amount = 0 }) => {
             const cash = depositCash + saleCash;
@@ -168,6 +169,7 @@ export class PortfolioResultsCalculator {
               }
               trackedInvested = +(trackedInvested - costReleased).toFixed(2);
               saleCash = +(saleCash + scaledAmount).toFixed(2);
+              lastSaleDate = date;
               addLogRow({
                 date,
                 action: `Sell ${movement.ticker}`,
@@ -201,15 +203,22 @@ export class PortfolioResultsCalculator {
           }
 
           const today = this.todayProvider();
+          // A portfolio is closed when no position is left open once every date has been
+          // processed. Transient empty states (sold everything, then bought again) do not
+          // count, and the closing date is the last executed sale, not the first time the
+          // open positions map became empty.
+          const closed = openPositionById.size === 0 && lastSaleDate != null;
+          const asOf = closed ? lastSaleDate : today;
+
           if (moneyOut.length > 0) {
             const last = moneyOut[moneyOut.length - 1];
-            if (last.date === today) {
+            if (last.date === asOf) {
               last.amount = +(last.amount + depositCash + saleCash).toFixed(2);
             } else {
-              moneyOut.push({ date: today, amount: +(depositCash + saleCash).toFixed(2) });
+              moneyOut.push({ date: asOf, amount: +(depositCash + saleCash).toFixed(2) });
             }
           } else {
-            moneyOut.push({ date: today, amount: +(depositCash + saleCash).toFixed(2) });
+            moneyOut.push({ date: asOf, amount: +(depositCash + saleCash).toFixed(2) });
           }
 
           const xirrFlows = [
@@ -225,7 +234,7 @@ export class PortfolioResultsCalculator {
             rate = Number.NaN;
           }
 
-          const avgAge = moneyIn.length > 0 ? this.weightedAgeCalculator.calculate(moneyIn) : 0;
+          const avgAge = moneyIn.length > 0 ? this.weightedAgeCalculator.calculate(moneyIn, asOf) : 0;
 
           const deposited = +moneyIn.reduce((sum, entry) => sum + entry.amount, 0).toFixed(2);
           const invested = +valueToday.toFixed(2);
@@ -253,14 +262,16 @@ export class PortfolioResultsCalculator {
 
           trackedInvested = invested;
           addLogRow({
-            date: today,
-            action: "Final snapshot",
+            date: asOf,
+            action: closed ? "Closed" : "Final snapshot",
             amount: 0,
           });
           const result = {
             top_n: firstN,
             tab: tabName,
             strat,
+            closed,
+            asOf,
             XIRR: Number.isNaN(rate) ? "N/A" : +((rate * 100).toFixed(2)),
             avg_age_y: +avgAge.toFixed(2),
             deposited,

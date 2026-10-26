@@ -46,6 +46,8 @@ describe("PortfolioResultsCalculator", () => {
       top_n: 4,
       tab: "Tab A",
       strat: "Fixed D",
+      closed: false,
+      asOf: "2026-01-02",
       XIRR: 12.34,
       avg_age_y: 1.23,
       deposited: 1000,
@@ -255,7 +257,7 @@ describe("PortfolioResultsCalculator", () => {
 
     expect(weightedAgeCalculator.calculate).toHaveBeenCalledWith([
       { date: "2026-01-01", amount: 1000 },
-    ]);
+    ], "2026-01-10");
 
     expect(xirrCalculator.calculate).toHaveBeenCalledWith([
       { date: "2026-01-01", amount: -1000 },
@@ -312,6 +314,8 @@ describe("PortfolioResultsCalculator", () => {
       top_n: 4,
       tab: "Empty Tab",
       strat: "Fixed D",
+      closed: false,
+      asOf: "2026-01-02",
       XIRR: "N/A",
       avg_age_y: 0,
       deposited: 0,
@@ -358,7 +362,7 @@ describe("PortfolioResultsCalculator", () => {
     expect(result.avg_age_y).toBe(2);
     expect(weightedAgeCalculator.calculate).toHaveBeenCalledWith([
       { date: "2026-01-01", amount: 1200 },
-    ]);
+    ], "2026-01-02");
     expect(xirrCalculator.calculate).toHaveBeenCalledWith([
       { date: "2026-01-01", amount: -1200 },
       { date: "2026-01-02", amount: 1400 },
@@ -410,7 +414,7 @@ describe("PortfolioResultsCalculator", () => {
     expect(weightedAgeCalculator.calculate).toHaveBeenCalledWith([
       { date: "2026-01-01", amount: 1000 },
       { date: "2026-01-04", amount: 1000 },
-    ]);
+    ], "2026-01-10");
     expect(xirrCalculator.calculate).toHaveBeenCalledWith([
       { date: "2026-01-01", amount: -1000 },
       { date: "2026-01-04", amount: -1000 },
@@ -445,5 +449,91 @@ describe("PortfolioResultsCalculator", () => {
     expect(result.cash).toBe(1200);
     expect(result.invested).toBe(0);
     expect(result.current).toBe(1200);
+  });
+
+  it("closes the portfolio on the last sale date when no position is left open", () => {
+    const xirrCalculator = { calculate: jasmine.createSpy("calculate").and.returnValue(0.2) };
+    const weightedAgeCalculator = { calculate: jasmine.createSpy("calculate").and.returnValue(1) };
+    const calculator = new PortfolioResultsCalculator({
+      firstNFilter: { filter: (entries) => entries },
+      movementMapper: {
+        map: (entry) => {
+          if (entry.id === 1) {
+            return [
+              { action: "buy", date: "2026-01-01", ticker: "AAA", amount: 1000, positionId: 1 },
+              { action: "sell", date: "2026-03-01", ticker: "AAA", amount: 1200, positionId: 1 },
+            ];
+          }
+          return [
+            { action: "buy", date: "2026-02-01", ticker: "BBB", amount: 1000, positionId: 2 },
+            { action: "sell", date: "2026-02-15", ticker: "BBB", amount: 900, positionId: 2 },
+          ];
+        },
+      },
+      xirrCalculator,
+      weightedAgeCalculator,
+      logger: { warn: jasmine.createSpy("warn") },
+      minDeposit: 1000,
+      minInvestment: 100,
+      todayProvider: () => "2026-09-03",
+    });
+
+    const result = byStrat(calculator.calculate(
+      [{ name: "Tab Closed", entries: [{ id: 1 }, { id: 2 }] }],
+      [2],
+      { minDeposit: 1000, minInvestment: 200 },
+    ), "Fixed D");
+
+    expect(result.closed).toBeTrue();
+    expect(result.asOf).toBe("2026-03-01");
+    expect(result.invested).toBe(0);
+
+    const flows = xirrCalculator.calculate.calls.first().args[0];
+    expect(flows[flows.length - 1].date).toBe("2026-03-01");
+    expect(flows.some((flow) => flow.date === "2026-09-03")).toBeFalse();
+    expect(weightedAgeCalculator.calculate).toHaveBeenCalledWith(
+      jasmine.any(Array),
+      "2026-03-01",
+    );
+    expect(result.log[result.log.length - 1]).toEqual(
+      jasmine.objectContaining({ date: "2026-03-01", action: "Closed" }),
+    );
+  });
+
+  it("keeps the portfolio open when a position is bought again after selling everything", () => {
+    const xirrCalculator = { calculate: jasmine.createSpy("calculate").and.returnValue(0.2) };
+    const calculator = new PortfolioResultsCalculator({
+      firstNFilter: { filter: (entries) => entries },
+      movementMapper: {
+        map: (entry) => {
+          if (entry.id === 1) {
+            return [
+              { action: "buy", date: "2026-01-01", ticker: "AAA", amount: 1000, positionId: 1 },
+              { action: "sell", date: "2026-02-01", ticker: "AAA", amount: 1200, positionId: 1 },
+            ];
+          }
+          return [
+            { action: "buy", date: "2026-03-01", ticker: "BBB", amount: 1000, positionId: 2 },
+            { action: "valueToday", date: "2026-09-03", ticker: "BBB", amount: 1100, positionId: 2 },
+          ];
+        },
+      },
+      xirrCalculator,
+      weightedAgeCalculator: { calculate: () => 1 },
+      logger: { warn: jasmine.createSpy("warn") },
+      minDeposit: 1000,
+      minInvestment: 100,
+      todayProvider: () => "2026-09-03",
+    });
+
+    const result = byStrat(calculator.calculate(
+      [{ name: "Tab Reopened", entries: [{ id: 1 }, { id: 2 }] }],
+      [2],
+      { minDeposit: 1000, minInvestment: 200 },
+    ), "Fixed D");
+
+    expect(result.closed).toBeFalse();
+    expect(result.asOf).toBe("2026-09-03");
+    expect(result.log[result.log.length - 1].action).toBe("Final snapshot");
   });
 });

@@ -65,10 +65,13 @@ function buildRow(result, resultKey) {
   const pctDep = ((depC / total) * 100).toFixed(1);
   const pctSal = ((salC / total) * 100).toFixed(1);
   const xirr = result.XIRR;
+  const closedDot = result.closed
+    ? `<span class="closed-dot" title="Closed on ${escapeHtml(result.asOf)} — XIRR and age are measured up to that date"></span>`
+    : "";
 
   return `<tr>
         <td class="num mono">${result.top_n}</td>
-        <td><a href="#" class="tab-log-link" data-result-key="${escapeHtml(resultKey)}">${escapeHtml(result.tab)}</a></td>
+        <td><a href="#" class="tab-log-link" data-result-key="${escapeHtml(resultKey)}">${escapeHtml(result.tab)}</a>${closedDot}</td>
         <td class="mono" style="font-size:0.6875rem;">${escapeHtml(result.strat || "")}</td>
         <td class="num mono col-border-left val-muted">${formatAmount(result.deposited)}</td>
         <td class="num mono val-heading">
